@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<title>Atmos Auto — Servisna Knjižica</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101827">
+<style>
+:root{--acc:#1686b8;--glass:rgba(12,20,34,.78);--line:rgba(255,255,255,.16);--muted:#c4d0df;--white:#f7f9fc}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--white);min-height:100vh;background:#101827;background-size:cover;background-position:center;background-attachment:fixed;padding:20px}
+body:before{content:"";position:fixed;inset:0;background:linear-gradient(110deg,rgba(5,12,24,.88),rgba(5,12,24,.4));z-index:-1}
+header{display:flex;justify-content:space-between;align-items:center;max-width:1100px;margin:0 auto 24px;padding:0 10px}
+.brand{font-size:22px;font-weight:800;letter-spacing:2px}.brand span{color:#7dd3fc}
+main{max-width:1100px;margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.panel{background:var(--glass);border:1px solid var(--line);border-radius:22px;padding:22px;backdrop-filter:blur(15px);box-shadow:0 12px 40px #0003;min-width:0}
+.panel.wide{grid-column:1/-1}
+h2{font-size:16px;letter-spacing:.5px;margin:0 0 16px;display:flex;align-items:center;gap:9px}
+.muted{color:var(--muted)}
+.field{background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:12px;color:white;padding:10px 14px;font:inherit;width:100%}
+.field::placeholder{color:#b7c3d1}
+select.field option{color:#000}
+button{font:inherit;border:1px solid var(--line);background:rgba(255,255,255,.1);color:white;padding:10px 16px;border-radius:12px;cursor:pointer;transition:background .2s}
+button:hover{background:rgba(255,255,255,.2)}
+button.primary{background:var(--acc);border-color:var(--acc);font-weight:600}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-row{margin-bottom:12px}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.1)}
+th{color:#91cdec;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.stat-box{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:16px;padding:16px;text-align:center}
+.stat-val{font-size:24px;font-weight:700;color:#7dd3fc;margin-top:4px}
+.filelabel{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border:1px solid var(--line);border-radius:12px;cursor:pointer;background:rgba(255,255,255,.1);font-size:14px}
+.filelabel:hover{background:rgba(255,255,255,.2)}
+.filelabel input{display:none}
+.actions-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+@media(max-width:850px){main{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">ATMOS AUTO<span>•</span> SERVISNA KNJIŽICA</div>
+  <div style="display:flex;gap:10px">
+    <button id="expBtn">⬇ Izvezi podatke (JSON)</button>
+    <label class="filelabel">⬆ Uvezi podatke<input type="file" id="impFile" accept=".json,application/json"></label>
+  </div>
+</header>
+
+<main>
+  <!-- STATISTIKA I VOZILO -->
+  <section class="panel wide">
+    <h2>🚗 INFORMACIJE O VOZILU I STATISTIKA</h2>
+    <div class="form-grid" style="margin-bottom:16px">
+      <div><label class="muted" style="font-size:12px">Model automobila</label><input id="carModel" class="field" placeholder="npr. Peugeot 307 SW 2.0 HDi"></div>
+      <div><label class="muted" style="font-size:12px">Registarska oznaka</label><input id="carPlate" class="field" placeholder="npr. BG-666-JM"></div>
+    </div>
+    <div class="stats">
+      <div class="stat-box"><div class="muted">Ukupno servisa/zapisa</div><div class="stat-val" id="statCount">0</div></div>
+      <div class="stat-box"><div class="muted">Ukupno potrošeno</div><div class="stat-val" id="statCost">0 RSD</div></div>
+      <div class="stat-box"><div class="muted">Poslednja kilometraža</div><div class="stat-val" id="statKm">0 km</div></div>
+    </div>
+  </section>
+
+  <!-- UNOS NOVOG SERVISA -->
+  <section class="panel">
+    <h2>🛠️ DODAJ NOVI SERVIS / ZAPIS</h2>
+    <div class="form-grid">
+      <div><label class="muted" style="font-size:12px">Datum</label><input id="sDate" type="date" class="field"></div>
+      <div><label class="muted" style="font-size:12px">Kilometraža (km)</label><input id="sKm" type="number" class="field" placeholder="npr. 215000"></div>
+    </div>
+    <div class="form-row">
+      <label class="muted" style="font-size:12px">Vrsta intervencije / Deo</label>
+      <input id="sTitle" class="field" placeholder="npr. Mali servis (ulje i filteri)">
+    </div>
+    <div class="form-grid">
+      <div><label class="muted" style="font-size:12px">Cena (RSD)</label><input id="sCost" type="number" class="field" placeholder="npr. 12000"></div>
+      <div><label class="muted" style="font-size:12px">Lokacija / Serviser</label><input id="sMech" class="field" placeholder="npr. Sam svoj majstor / Radionica"></div>
+    </div>
+    <div class="form-row">
+      <label class="muted" style="font-size:12px">Beleške i detalji</label>
+      <textarea id="sNote" class="field" rows="3" placeholder="Dodatne napomene, kataloški brojevi delova..."></textarea>
+    </div>
+    <button id="addBtn" class="primary" style="width:100%;margin-top:4px">💾 Sačuvaj servisni zapis</button>
+  </section>
+
+  <!-- ISTORIJA SERVISA -->
+  <section class="panel">
+    <h2>📋 ISTORIJA ZAPISA</h2>
+    <div style="max-height:380px;overflow:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Datum / km</th>
+            <th>Intervencija</th>
+            <th>Cena</th>
+            <th>Akcija</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="4" class="muted" style="text-align:center;padding:20px">Nema unetih servisa.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="actions-bar">
+      <button id="clearBtn" style="background:rgba(239,68,68,.2);border-color:#ef4444">🗑 Obriši sve podatke</button>
+    </div>
+  </section>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const ls=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
+const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+
+let db = ls('atmosAutoDb', {
+    model: '',
+    plate: '',
+    records: []
+});
+
+$('carModel').value = db.model || '';
+$('carPlate').value = db.plate || '';
+$('sDate').valueAsDate = new Date();
+
+['carModel','carPlate'].forEach(id=>{
+    $(id).oninput=()=>{
+        db.model = $('carModel').value;
+        db.plate = $('carPlate').value;
+        sv('atmosAutoDb', db);
+    }
+});
+
+function render(){
+    const tbody = $('tableBody');
+    if(!db.records.length){
+        tbody.innerHTML='<tr><td colspan="4" class="muted" style="text-align:center;padding:20px">Nema unetih servisa.</td></tr>';
+        $('statCount').textContent = '0';
+        $('statCost').textContent = '0 RSD';
+        $('statKm').textContent = '0 km';
+        return;
+    }
+
+    db.records.sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+    let totalCost = 0;
+    let maxKm = 0;
+
+    tbody.innerHTML = db.records.map((r, i)=>{
+        totalCost += Number(r.cost)||0;
+        if(Number(r.km) > maxKm) maxKm = Number(r.km);
+        return `<tr>
+            <td><b>${r.date}</b><br><span class="muted" style="font-size:11px">${r.km ? r.km + ' km' : '—'}</span></td>
+            <td><b>${r.title}</b><br><span class="muted" style="font-size:11px">${r.mech || ''}${r.mech && r.note ? ' — ' : ''}${r.note || ''}</span></td>
+            <td>${Number(r.cost).toLocaleString()} RSD</td>
+            <td><button onclick="delRecord(${i})" style="padding:4px 8px;font-size:11px;background:rgba(239,68,68,.2)">✕</button></td>
+        </tr>`;
+    }).join('');
+
+    $('statCount').textContent = db.records.length;
+    $('statCost').textContent = totalCost.toLocaleString() + ' RSD';
+    $('statKm').textContent = maxKm ? maxKm.toLocaleString() + ' km' : '0 km';
+}
+
+$('addBtn').onclick=()=>{
+    const title = $('sTitle').value.trim();
+    if(!title){ alert('Unesite naziv intervencije.'); return; }
+    
+    db.records.push({
+        id: Date.now(),
+        date: $('sDate').value || new Date().toISOString().split('T')[0],
+        km: $('sKm').value,
+        title: title,
+        cost: $('sCost').value || 0,
+        mech: $('sMech').value,
+        note: $('sNote').value
+    });
+
+    sv('atmosAutoDb', db);
+    render();
+
+    $('sTitle').value = '';
+    $('sKm').value = '';
+    $('sCost').value = '';
+    $('sMech').value = '';
+    $('sNote').value = '';
+    $('sDate').valueAsDate = new Date();
+};
+
+window.delRecord=(i)=>{
+    if(confirm('Da li želite da obrišete ovaj zapis?')){
+        db.records.splice(i, 1);
+        sv('atmosAutoDb', db);
+        render();
+    }
+};
+
+$('clearBtn').onclick=()=>{
+    if(confirm('Upozorenje: Ovim brišete sve sačuvane servise iz Atmos Auto knjižice! Da li ste sigurni?')){
+        db.records = [];
+        sv('atmosAutoDb', db);
+        render();
+    }
+};
+
+// EXPORT JSON
+$('expBtn').onclick=()=>{
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute("href", dataStr);
+    dlAnchor.setAttribute("download", `atmos_auto_servisna_knjizica_${db.plate || 'vozilo'}.json`);
+    document.body.appendChild(dlAnchor);
+    dlAnchor.click();
+    dlAnchor.remove();
+};
+
+// IMPORT JSON
+$('impFile').onchange=(e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload=(event)=>{
+        try{
+            const parsed = JSON.parse(event.target.result);
+            if(parsed && Array.isArray(parsed.records)){
+                db = parsed;
+                sv('atmosAutoDb', db);
+                $('carModel').value = db.model || '';
+                $('carPlate').value = db.plate || '';
+                render();
+                alert('Podaci su uspešno uvezeni u Atmos Auto knjižicu!');
+            }else{
+                alert('Greška: Fajl nema odgovarajuću strukturu.');
+            }
+        }catch(err){
+            alert('Greška pri čitanju JSON fajla.');
+        }
+    };
+    reader.readAsText(file);
+};
+
+render();
+</script>
+</body>
+</html>
