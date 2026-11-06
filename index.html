@@ -9,56 +9,78 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101827">
 <style>
-:root{--acc:#1686b8;--glass:rgba(12,20,34,.78);--line:rgba(255,255,255,.16);--muted:#c4d0df;--white:#f7f9fc;--danger:rgba(239,68,68,.25)}
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--white);min-height:100vh;background:#101827;background-size:cover;background-position:center;background-attachment:fixed;padding:20px}
-body:before{content:"";position:fixed;inset:0;background:linear-gradient(110deg,rgba(5,12,24,.88),rgba(5,12,24,.4));z-index:-1}
-header{display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto 20px;padding:0 10px;flex-wrap:wrap;gap:12px}
-.brand{font-size:22px;font-weight:800;letter-spacing:2px}.brand span{color:#7dd3fc}
+:root{--acc:#1686b8;--glass:rgba(12,20,34,.85);--line:rgba(255,255,255,.16);--muted:#c4d0df;--white:#f7f9fc;--danger:rgba(239,68,68,.25)}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--white);min-height:100vh;background:#101827;background-size:cover;background-position:center;background-attachment:fixed;padding:12px;overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;background:linear-gradient(110deg,rgba(5,12,24,.9),rgba(5,12,24,.6));z-index:-1}
+
+header{display:flex;justify-content:space-between;align-items:center;max-width:1200px;margin:0 auto 16px;padding:0 4px;gap:10px}
+.brand{font-size:18px;font-weight:800;letter-spacing:1px;word-break:break-word}.brand span{color:#7dd3fc}
 main{max-width:1200px;margin:auto}
-.panel{background:var(--glass);border:1px solid var(--line);border-radius:22px;padding:22px;backdrop-filter:blur(15px);box-shadow:0 12px 40px #0003;margin-bottom:20px}
-h2{font-size:16px;letter-spacing:.5px;margin:0 0 16px;display:flex;align-items:center;gap:9px}
+
+.panel{background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:16px;backdrop-filter:blur(15px);box-shadow:0 8px 30px #0004;margin-bottom:16px;width:100%}
+h2{font-size:15px;letter-spacing:.5px;margin:0 0 14px;display:flex;align-items:center;gap:8px;word-break:break-word}
 .muted{color:var(--muted)}
-.field{background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:12px;color:white;padding:10px 14px;font:inherit;width:100%}
+
+.field{background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:12px;color:white;padding:10px 12px;font:inherit;width:100%;font-size:14px}
 .field::placeholder{color:#b7c3d1}
 select.field option{color:#000}
-button{font:inherit;border:1px solid var(--line);background:rgba(255,255,255,.1);color:white;padding:10px 16px;border-radius:12px;cursor:pointer;transition:background .2s}
+textarea.field{resize:vertical}
+
+button{font:inherit;border:1px solid var(--line);background:rgba(255,255,255,.1);color:white;padding:10px 14px;border-radius:12px;cursor:pointer;transition:background .2s;font-size:14px;white-space:nowrap}
 button:hover{background:rgba(255,255,255,.2)}
 button.primary{background:var(--acc);border-color:var(--acc);font-weight:600}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-.form-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px}
-.form-row{margin-bottom:12px}
-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
-th,td{text-align:left;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.1)}
-th{color:#91cdec;font-weight:600}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-.stat-box{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:16px;padding:14px;text-align:center}
-.stat-val{font-size:22px;font-weight:700;color:#7dd3fc;margin-top:4px}
-.filelabel{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border:1px solid var(--line);border-radius:12px;cursor:pointer;background:rgba(255,255,255,.1);font-size:14px}
-.filelabel:hover{background:rgba(255,255,255,.2)}
-.filelabel input{display:none}
 
-/* TABOVI NAVIGATION */
-.nav-tabs{display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px}
-.tab-btn{padding:10px 18px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px}
+.form-row{margin-bottom:12px}
+
+/* STATISTIKA */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:6px}
+.stat-box{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;padding:12px 8px;text-align:center}
+.stat-val{font-size:18px;font-weight:700;color:#7dd3fc;margin-top:4px;word-break:break-all}
+
+/* TABOVI */
+.nav-tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+.tab-btn{padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--muted);font-size:13px}
 .tab-btn.active{background:var(--acc);color:white;border-color:var(--acc);font-weight:600}
 .tab-content{display:none}.tab-content.active{display:block}
 
-.badge{padding:4px 8px;border-radius:8px;font-size:11px;font-weight:600;display:inline-block}
+/* TABELE */
+.table-responsive{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:320px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.1);word-break:break-word}
+th{color:#91cdec;font-weight:600}
+
+.filelabel{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;cursor:pointer;background:rgba(255,255,255,.1);font-size:14px}
+.filelabel:hover{background:rgba(255,255,255,.2)}
+.filelabel input{display:none}
+
+.badge{padding:4px 8px;border-radius:8px;font-size:11px;font-weight:600;display:inline-block;margin-top:4px}
 .badge-danger{background:rgba(239,68,68,.3);color:#fca5a5;border:1px solid rgba(239,68,68,.5)}
 .badge-warning{background:rgba(245,158,11,.3);color:#fde68a;border:1px solid rgba(245,158,11,.5)}
 .badge-success{background:rgba(16,185,129,.3);color:#6ee7b7;border:1px solid rgba(16,185,129,.5)}
 
-@media(max-width:850px){.form-grid,.form-grid-3,.stats{grid-template-columns:1fr}}
+/* RESPONSIVE MEDIA QUERIES ZA MOBILNE */
+@media(max-width:768px){
+  body{padding:8px}
+  header{flex-direction:column;align-items:stretch;gap:8px}
+  header > div {display:flex;flex-wrap:wrap;gap:6px;justify-content:stretch}
+  header > div > * {flex:1;text-align:center;justify-content:center}
+  .grid-2, .grid-3, .stats{grid-template-columns:1fr}
+  .panel{padding:12px}
+  button, .filelabel{width:100%;justify-content:center}
+}
 </style>
 </head>
 <body>
 
 <header>
   <div class="brand">ATMOS AUTO<span>•</span> SERVISNA KNJIŽICA</div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button id="expBtn">⬇ Izvezi (JSON)</button>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button id="expBtn">⬇ Izvezi</button>
     <label class="filelabel">⬆ Uvezi<input type="file" id="impFile" accept=".json,application/json"></label>
-    <button id="installBtn" style="background:#2563eb">📲 Instaliraj</button>
+    <button id="installBtn" style="background:#2563eb;display:none">📲 Instaliraj</button>
   </div>
 </header>
 
@@ -66,54 +88,54 @@ th{color:#91cdec;font-weight:600}
   <!-- INFORMACIJE O VOZILU I STATISTIKA -->
   <section class="panel">
     <h2>🚗 INFORMACIJE O VOZILU I SUMAR</h2>
-    <div class="form-grid" style="margin-bottom:16px">
-      <div><label class="muted" style="font-size:12px">Model automobila</label><input id="carModel" class="field" placeholder="npr. Peugeot 307 SW 2.0 HDi"></div>
-      <div><label class="muted" style="font-size:12px">Registarska oznaka</label><input id="carPlate" class="field" placeholder="npr. BG-666-JM"></div>
+    <div class="grid-2" style="margin-bottom:12px">
+      <div><label class="muted" style="font-size:11px">Model automobila</label><input id="carModel" class="field" placeholder="npr. Peugeot 307 SW"></div>
+      <div><label class="muted" style="font-size:11px">Registarska oznaka</label><input id="carPlate" class="field" placeholder="npr. BG-666-JM"></div>
     </div>
     <div class="stats">
-      <div class="stat-box"><div class="muted">Ukupno servisa</div><div class="stat-val" id="statCount">0</div></div>
-      <div class="stat-box"><div class="muted">Trošak servisa</div><div class="stat-val" id="statCost">0 RSD</div></div>
-      <div class="stat-box"><div class="muted">Poslednja km</div><div class="stat-val" id="statKm">0 km</div></div>
-      <div class="stat-box"><div class="muted">Prosečna potrošnja</div><div class="stat-val" id="statAvgFuel">0.0 L</div></div>
+      <div class="stat-box"><div class="muted" style="font-size:11px">Ukupno servisa</div><div class="stat-val" id="statCount">0</div></div>
+      <div class="stat-box"><div class="muted" style="font-size:11px">Trošak servisa</div><div class="stat-val" id="statCost" style="font-size:15px">0 RSD</div></div>
+      <div class="stat-box"><div class="muted" style="font-size:11px">Poslednja km</div><div class="stat-val" id="statKm" style="font-size:15px">0 km</div></div>
+      <div class="stat-box"><div class="muted" style="font-size:11px">Prosek goriva</div><div class="stat-val" id="statAvgFuel" style="font-size:15px">0.0 L</div></div>
     </div>
   </section>
 
   <!-- NAVIGACIJA PO TABOVIMA -->
   <div class="nav-tabs">
-    <button class="tab-btn active" onclick="openTab('tab-servis')">🛠️ Servisi & Kvarovi</button>
-    <button class="tab-btn" onclick="openTab('tab-potrosnja')">⛽ Kalkulator Potrošnje</button>
-    <button class="tab-btn" onclick="openTab('tab-planer')">📅 Planer & Podsetnici</button>
-    <button class="tab-btn" onclick="openTab('tab-podaci')">📋 Podaci & Dokumenta</button>
-    <button class="tab-btn" onclick="openTab('tab-putovanja')">🗺️ Putni Troškovi</button>
+    <button class="tab-btn active" onclick="openTab('tab-servis')">🛠️ Servisi</button>
+    <button class="tab-btn" onclick="openTab('tab-potrosnja')">⛽ Potrošnja</button>
+    <button class="tab-btn" onclick="openTab('tab-planer')">📅 Planer</button>
+    <button class="tab-btn" onclick="openTab('tab-podaci')">📋 Dokumenta</button>
+    <button class="tab-btn" onclick="openTab('tab-putovanja')">🗺️ Putovanja</button>
   </div>
 
   <!-- TAB 1: SERVISNA ISTORIJA -->
   <div id="tab-servis" class="tab-content active">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="form-grid">
-      <section class="panel">
-        <h2>➕ DODAJ NOVI SERVIS / RAD</h2>
-        <div class="form-grid">
-          <div><label class="muted" style="font-size:12px">Datum</label><input id="sDate" type="date" class="field"></div>
-          <div><label class="muted" style="font-size:12px">Kilometraža (km)</label><input id="sKm" type="number" class="field" placeholder="npr. 215000"></div>
+    <div class="grid-2" style="align-items:start">
+      <section class="panel" style="margin-bottom:0">
+        <h2>➕ DODAJ SERVIS</h2>
+        <div class="grid-2">
+          <div><label class="muted" style="font-size:11px">Datum</label><input id="sDate" type="date" class="field"></div>
+          <div><label class="muted" style="font-size:11px">Kilometraža (km)</label><input id="sKm" type="number" class="field" placeholder="215000"></div>
         </div>
         <div class="form-row">
-          <label class="muted" style="font-size:12px">Vrsta intervencije / Radovi</label>
-          <input id="sTitle" class="field" placeholder="npr. Mali servis (ulje i filteri)">
+          <label class="muted" style="font-size:11px">Intervencija / Deo</label>
+          <input id="sTitle" class="field" placeholder="Mali servis (ulje i filteri)">
         </div>
-        <div class="form-grid">
-          <div><label class="muted" style="font-size:12px">Cena (RSD)</label><input id="sCost" type="number" class="field" placeholder="npr. 12000"></div>
-          <div><label class="muted" style="font-size:12px">Lokacija / Majstor</label><input id="sMech" class="field" placeholder="npr. Sam svoj majstor"></div>
+        <div class="grid-2">
+          <div><label class="muted" style="font-size:11px">Cena (RSD)</label><input id="sCost" type="number" class="field" placeholder="12000"></div>
+          <div><label class="muted" style="font-size:11px">Majstor / Lokacija</label><input id="sMech" class="field" placeholder="Sam svoj majstor"></div>
         </div>
         <div class="form-row">
-          <label class="muted" style="font-size:12px">Beleške i delovi</label>
-          <textarea id="sNote" class="field" rows="3" placeholder="Dodatne napomene, kataloški brojevi delova..."></textarea>
+          <label class="muted" style="font-size:11px">Beleške i delovi</label>
+          <textarea id="sNote" class="field" rows="2" placeholder="Kataloški brojevi..."></textarea>
         </div>
         <button id="addBtn" class="primary" style="width:100%">💾 Sačuvaj zapis</button>
       </section>
 
-      <section class="panel">
-        <h2>📋 ISTORIJA SERVISA</h2>
-        <div style="max-height:420px;overflow:auto">
+      <section class="panel" style="margin-bottom:0">
+        <h2>📋 ISTORIJA</h2>
+        <div class="table-responsive" style="max-height:380px">
           <table>
             <thead>
               <tr>
@@ -132,31 +154,31 @@ th{color:#91cdec;font-weight:600}
     </div>
   </div>
 
-  <!-- TAB 2: EVEMENTACIJA GORIVA I POTROŠNJA -->
+  <!-- TAB 2: POTROŠNJA GORIVA -->
   <div id="tab-potrosnja" class="tab-content">
-    <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:20px" class="form-grid">
-      <section class="panel">
-        <h2>⛽ UNOS SIPANJA GORIVA</h2>
-        <div class="form-grid">
-          <div><label class="muted" style="font-size:12px">Datum</label><input id="fDate" type="date" class="field"></div>
-          <div><label class="muted" style="font-size:12px">Kilometraža (km)</label><input id="fKm" type="number" class="field" placeholder="npr. 215450"></div>
+    <div class="grid-2" style="align-items:start">
+      <section class="panel" style="margin-bottom:0">
+        <h2>⛽ UNOS SIPANJA</h2>
+        <div class="grid-2">
+          <div><label class="muted" style="font-size:11px">Datum</label><input id="fDate" type="date" class="field"></div>
+          <div><label class="muted" style="font-size:11px">Kilometraža (km)</label><input id="fKm" type="number" class="field" placeholder="215450"></div>
         </div>
-        <div class="form-grid">
-          <div><label class="muted" style="font-size:12px">Litara (L)</label><input id="fLiters" type="number" step="0.01" class="field" placeholder="npr. 45.5"></div>
-          <div><label class="muted" style="font-size:12px">Ukupno RSD</label><input id="fCost" type="number" class="field" placeholder="npr. 9100"></div>
+        <div class="grid-2">
+          <div><label class="muted" style="font-size:11px">Litara (L)</label><input id="fLiters" type="number" step="0.01" class="field" placeholder="45.5"></div>
+          <div><label class="muted" style="font-size:11px">Ukupno RSD</label><input id="fCost" type="number" class="field" placeholder="9100"></div>
         </div>
-        <button id="addFuelBtn" class="primary" style="width:100%;margin-top:6px">⛽ Sačuvaj sipanje</button>
+        <button id="addFuelBtn" class="primary" style="width:100%">⛽ Sačuvaj sipanje</button>
       </section>
 
-      <section class="panel">
-        <h2>📊 EVIDENCIJA SIPANJA I PROSECI</h2>
-        <div style="max-height:380px;overflow:auto">
+      <section class="panel" style="margin-bottom:0">
+        <h2>📊 PROSECI GORIVA</h2>
+        <div class="table-responsive" style="max-height:380px">
           <table>
             <thead>
               <tr>
                 <th>Datum / km</th>
-                <th>Sipano</th>
-                <th>Ukupno</th>
+                <th>L</th>
+                <th>RSD</th>
                 <th>Prosek</th>
                 <th></th>
               </tr>
@@ -173,90 +195,102 @@ th{color:#91cdec;font-weight:600}
   <!-- TAB 3: PLANER I PODSETNICI -->
   <div id="tab-planer" class="tab-content">
     <section class="panel">
-      <h2>📅 VAŽNI DATUMI & INTERVALI ODRŽAVANJA</h2>
-      <div class="form-grid-3">
+      <h2>📅 PLANER & PODSETNICI</h2>
+      <div class="grid-3">
         <div>
-          <label class="muted" style="font-size:12px">Istek Registracije</label>
+          <label class="muted" style="font-size:11px">Istek Registracije</label>
           <input id="pRegDate" type="date" class="field">
-          <div id="pRegStatus" style="margin-top:6px"></div>
+          <div id="pRegStatus"></div>
         </div>
         <div>
-          <label class="muted" style="font-size:12px">Sledeći Mali Servis (km)</label>
-          <input id="pMaliKm" type="number" class="field" placeholder="npr. 225000">
-          <div id="pMaliStatus" style="margin-top:6px"></div>
+          <label class="muted" style="font-size:11px">Pomoć na Putu (Istek)</label>
+          <input id="pAsstDate" type="date" class="field">
+          <div id="pAsstStatus"></div>
         </div>
         <div>
-          <label class="muted" style="font-size:12px">Sledeći Veliki Servis (km)</label>
-          <input id="pVelikiKm" type="number" class="field" placeholder="npr. 270000">
-          <div id="pVelikiStatus" style="margin-top:6px"></div>
+          <label class="muted" style="font-size:11px">Putno Zdravstveno (Istek)</label>
+          <input id="pInsDate" type="date" class="field">
+          <div id="pInsStatus"></div>
         </div>
       </div>
-      <button id="savePlanerBtn" class="primary" style="margin-top:10px">💾 Sačuvaj podsetnike</button>
+      <div class="grid-2" style="margin-top:12px">
+        <div>
+          <label class="muted" style="font-size:11px">Sledeći Mali Servis (km)</label>
+          <input id="pMaliKm" type="number" class="field" placeholder="225000">
+          <div id="pMaliStatus"></div>
+        </div>
+        <div>
+          <label class="muted" style="font-size:11px">Sledeći Veliki Servis (km)</label>
+          <input id="pVelikiKm" type="number" class="field" placeholder="270000">
+          <div id="pVelikiStatus"></div>
+        </div>
+      </div>
+      <button id="savePlanerBtn" class="primary" style="margin-top:12px;width:100%">💾 Sačuvaj podsetnike</button>
     </section>
   </div>
 
   <!-- TAB 4: TEHNIČKI PODACI I DOKUMENTA -->
   <div id="tab-podaci" class="tab-content">
     <section class="panel">
-      <h2>📋 STALNE BELEŠKE & SPECIFIKACIJE VOZILA</h2>
-      <div class="form-grid">
+      <h2>📋 SPECIFIKACIJE & DOKUMENTA</h2>
+      <div class="grid-2">
         <div>
-          <label class="muted" style="font-size:12px">Motor & Kod Boje</label>
-          <input id="specEngine" class="field" placeholder="npr. 2.0 HDi 90KS (RHY), Kod boje: KGW">
+          <label class="muted" style="font-size:11px">Motor & Kod Boje</label>
+          <input id="specEngine" class="field" placeholder="2.0 HDi 90KS, Kod: KGW">
         </div>
         <div>
-          <label class="muted" style="font-size:12px">Dimenzije Guma & Pritisak</label>
-          <input id="specTires" class="field" placeholder="npr. 195/65 R15 (2.3 bar / 2.5 bar)">
+          <label class="muted" style="font-size:11px">Dimenzije Guma & Pritisak</label>
+          <input id="specTires" class="field" placeholder="195/65 R15 (2.3/2.5 bar)">
         </div>
       </div>
-      <div class="form-grid">
+      <div class="grid-2">
         <div>
-          <label class="muted" style="font-size:12px">Ulje & Filteri (Kataloški brojevi)</label>
-          <input id="specOil" class="field" placeholder="npr. Total Quartz 9000 5W40 (4.5L), Purflux L358A">
+          <label class="muted" style="font-size:11px">Ulje & Filteri (Kataloški brojevi)</label>
+          <input id="specOil" class="field" placeholder="Total 5W40, Purflux L358A">
         </div>
         <div>
-          <label class="muted" style="font-size:12px">Pomoć na putu / Osiguranje</label>
-          <input id="specInsurance" class="field" placeholder="npr. Tesla24h Evropa, Polisa: 123456 (0800...)">
+          <label class="muted" style="font-size:11px">Pomoć na putu / Polisa info</label>
+          <input id="specInsurance" class="field" placeholder="Tesla24h Evropa, Broj...">
         </div>
       </div>
       <div class="form-row">
-        <label class="muted" style="font-size:12px">Ostale beleške i radne opaske</label>
-        <textarea id="specNotes" class="field" rows="4" placeholder="Beleške o rezervnim delovima, zameni sijalica, akumulatoru..."></textarea>
+        <label class="muted" style="font-size:11px">Ostale beleške i opaske</label>
+        <textarea id="specNotes" class="field" rows="3" placeholder="Sijalice, akumulator..."></textarea>
       </div>
-      <button id="saveSpecBtn" class="primary">💾 Sačuvaj specifikaciju</button>
+      <button id="saveSpecBtn" class="primary" style="width:100%">💾 Sačuvaj specifikaciju</button>
     </section>
   </div>
 
   <!-- TAB 5: PUTNI TROŠKOVI -->
   <div id="tab-putovanja" class="tab-content">
-    <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:20px" class="form-grid">
-      <section class="panel">
-        <h2>🗺️ DODAJ PUTNI TROŠAK (PUTARINE / VINJETE / PARKING)</h2>
-        <div class="form-grid">
-          <div><label class="muted" style="font-size:12px">Datum</label><input id="tDate" type="date" class="field"></div>
-          <div><label class="muted" style="font-size:12px">Ruta / Relacija</label><input id="tRoute" class="field" placeholder="npr. Beograd — Koper"></div>
+    <div class="grid-2" style="align-items:start">
+      <section class="panel" style="margin-bottom:0">
+        <h2>🗺️ DODAJ PUTNI TROŠAK</h2>
+        <div class="grid-2">
+          <div><label class="muted" style="font-size:11px">Datum</label><input id="tDate" type="date" class="field"></div>
+          <div><label class="muted" style="font-size:11px">Relacija</label><input id="tRoute" class="field" placeholder="Beograd — Koper"></div>
         </div>
-        <div class="form-grid">
-          <div><label class="muted" style="font-size:12px">Vrsta troška</label><input id="tType" class="field" placeholder="npr. Vinjeta HR / Putarina / Parking"></div>
-          <div><label class="muted" style="font-size:12px">Iznos (RSD / EUR)</label><input id="tCost" class="field" placeholder="npr. 2500 RSD ili 16 EUR"></div>
+        <div class="grid-2">
+          <div><label class="muted" style="font-size:11px">Vrsta troška</label><input id="tType" class="field" placeholder="Vinjeta / Putarina"></div>
+          <div><label class="muted" style="font-size:11px">Iznos</label><input id="tCost" class="field" placeholder="2500 RSD / 16 EUR"></div>
         </div>
-        <button id="addTripBtn" class="primary" style="width:100%">➕ Dodaj putni trošak</button>
+        <button id="addTripBtn" class="primary" style="width:100%">➕ Dodaj trošak</button>
       </section>
 
-      <section class="panel">
-        <h2>📋 EVIDENCIJA PUTOVANJA</h2>
-        <div style="max-height:380px;overflow:auto">
+      <section class="panel" style="margin-bottom:0">
+        <h2>📋 PUTOVANJA</h2>
+        <div class="table-responsive" style="max-height:380px">
           <table>
             <thead>
               <tr>
-                <th>Datum / Ruta</th>
-                <th>Trošak</th>
+                <th>Datum / Relacija</th>
+                <th>Vrsta</th>
                 <th>Iznos</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="tripTableBody">
-              <tr><td colspan="4" class="muted" style="text-align:center;padding:20px">Nema unetih putnih troškova.</td></tr>
+              <tr><td colspan="4" class="muted" style="text-align:center;padding:20px">Nema putnih troškova.</td></tr>
             </tbody>
           </table>
         </div>
@@ -284,7 +318,7 @@ function openTab(tabId){
     document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
     $(tabId).classList.add('active');
-    event.target.classList.add('active');
+    event.currentTarget.classList.add('active');
 }
 
 // OSNOVNE INFORMACIJE
@@ -302,9 +336,10 @@ $('tDate').valueAsDate = new Date();
     }
 });
 
-// POPUNJAVANJE PLANERA I SPECIFIKACIJE
 if(db.planer){
     $('pRegDate').value = db.planer.regDate || '';
+    $('pAsstDate').value = db.planer.asstDate || '';
+    $('pInsDate').value = db.planer.insDate || '';
     $('pMaliKm').value = db.planer.maliKm || '';
     $('pVelikiKm').value = db.planer.velikiKm || '';
 }
@@ -317,10 +352,11 @@ if(db.spec){
     $('specNotes').value = db.spec.notes || '';
 }
 
-// SAČUVAJ PLANER
 $('savePlanerBtn').onclick=()=>{
     db.planer = {
         regDate: $('pRegDate').value,
+        asstDate: $('pAsstDate').value,
+        insDate: $('pInsDate').value,
         maliKm: $('pMaliKm').value,
         velikiKm: $('pVelikiKm').value
     };
@@ -329,7 +365,6 @@ $('savePlanerBtn').onclick=()=>{
     alert('Podsetnici sačuvani!');
 };
 
-// SAČUVAJ SPECIFIKACIJU
 $('saveSpecBtn').onclick=()=>{
     db.spec = {
         engine: $('specEngine').value,
@@ -342,45 +377,46 @@ $('saveSpecBtn').onclick=()=>{
     alert('Specifikacije sačuvane!');
 };
 
+function checkDateStatus(dateStr, elementId){
+    if(!dateStr){ $(elementId).innerHTML = ''; return; }
+    const targetDate = new Date(dateStr);
+    const today = new Date();
+    const diffDays = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
+    
+    if(diffDays < 0){
+        $(elementId).innerHTML = `<span class="badge badge-danger">Isteklo pre ${Math.abs(diffDays)} d!</span>`;
+    } else if(diffDays <= 30){
+        $(elementId).innerHTML = `<span class="badge badge-warning">Ističe za ${diffDays} d!</span>`;
+    } else {
+        $(elementId).innerHTML = `<span class="badge badge-success">Važi još ${diffDays} d.</span>`;
+    }
+}
+
 function renderPlanerStatus(){
     const maxKm = getMaxKm();
-    
-    // Registracija status
-    if(db.planer?.regDate){
-        const reg = new Date(db.planer.regDate);
-        const today = new Date();
-        const diffDays = Math.ceil((reg - today) / (1000 * 60 * 60 * 24));
-        
-        if(diffDays < 0){
-            $('pRegStatus').innerHTML = `<span class="badge badge-danger">Istekla pre ${Math.abs(diffDays)} dana!</span>`;
-        } else if(diffDays <= 30){
-            $('pRegStatus').innerHTML = `<span class="badge badge-warning">Ističe za ${diffDays} dana!</span>`;
-        } else {
-            $('pRegStatus').innerHTML = `<span class="badge badge-success">Važi još ${diffDays} dana.</span>`;
-        }
-    }
+    checkDateStatus(db.planer?.regDate, 'pRegStatus');
+    checkDateStatus(db.planer?.asstDate, 'pAsstStatus');
+    checkDateStatus(db.planer?.insDate, 'pInsStatus');
 
-    // Mali servis km status
     if(db.planer?.maliKm && maxKm){
         const preostalo = Number(db.planer.maliKm) - maxKm;
         if(preostalo <= 0){
-            $('pMaliStatus').innerHTML = `<span class="badge badge-danger">Prekoračeno za ${Math.abs(preostalo)} km!</span>`;
+            $('pMaliStatus').innerHTML = `<span class="badge badge-danger">Prekoračeno ${Math.abs(preostalo)} km!</span>`;
         } else if(preostalo <= 1500){
             $('pMaliStatus').innerHTML = `<span class="badge badge-warning">Servis za ${preostalo} km.</span>`;
         } else {
             $('pMaliStatus').innerHTML = `<span class="badge badge-success">Preostalo ${preostalo} km.</span>`;
         }
-    }
+    } else { $('pMaliStatus').innerHTML = ''; }
 
-    // Veliki servis km status
     if(db.planer?.velikiKm && maxKm){
         const preostalo = Number(db.planer.velikiKm) - maxKm;
         if(preostalo <= 0){
-            $('pVelikiStatus').innerHTML = `<span class="badge badge-danger">Prekoračeno za ${Math.abs(preostalo)} km!</span>`;
+            $('pVelikiStatus').innerHTML = `<span class="badge badge-danger">Prekoračeno ${Math.abs(preostalo)} km!</span>`;
         } else {
             $('pVelikiStatus').innerHTML = `<span class="badge badge-success">Preostalo ${preostalo} km.</span>`;
         }
-    }
+    } else { $('pVelikiStatus').innerHTML = ''; }
 }
 
 function getMaxKm(){
@@ -390,7 +426,6 @@ function getMaxKm(){
     return max;
 }
 
-// RENDER SERVISA
 function render(){
     const tbody = $('tableBody');
     if(!db.records || !db.records.length){
@@ -400,9 +435,7 @@ function render(){
         $('statKm').textContent = '0 km';
     } else {
         db.records.sort((a,b)=>new Date(b.date)-new Date(a.date));
-
         let totalCost = 0;
-
         tbody.innerHTML = db.records.map((r, i)=>{
             totalCost += Number(r.cost)||0;
             return `<tr>
@@ -423,7 +456,6 @@ function render(){
     renderPlanerStatus();
 }
 
-// RENDER SIPANJA GORIVA
 function renderFuels(){
     const tbody = $('fuelTableBody');
     if(!db.fuels || !db.fuels.length){
@@ -433,15 +465,10 @@ function renderFuels(){
     }
 
     db.fuels.sort((a,b)=>new Date(b.date)-new Date(a.date));
-
-    let totalLiters = 0;
     let validCon = [];
 
     tbody.innerHTML = db.fuels.map((f, i)=>{
-        totalLiters += Number(f.liters)||0;
-        
         let avgStr = '—';
-        // Izračunaj potrošnju ako postoji prethodno sipanje po kilometraži
         if(i < db.fuels.length - 1){
             const prev = db.fuels[i+1];
             const dist = Number(f.km) - Number(prev.km);
@@ -455,7 +482,7 @@ function renderFuels(){
         return `<tr>
             <td><b>${f.date}</b><br><span class="muted" style="font-size:11px">${f.km} km</span></td>
             <td>${f.liters} L</td>
-            <td>${Number(f.cost).toLocaleString()} RSD</td>
+            <td>${Number(f.cost).toLocaleString()}</td>
             <td><b>${avgStr}</b></td>
             <td><button onclick="delFuel(${i})" style="padding:4px 8px;font-size:11px;background:var(--danger)">✕</button></td>
         </tr>`;
@@ -464,21 +491,17 @@ function renderFuels(){
     if(validCon.length){
         const overallAvg = validCon.reduce((a,b)=>a+b,0) / validCon.length;
         $('statAvgFuel').textContent = overallAvg.toFixed(1) + ' L';
-    } else {
-        $('statAvgFuel').textContent = '0.0 L';
-    }
+    } else { $('statAvgFuel').textContent = '0.0 L'; }
 }
 
-// RENDER PUTOVANJA
 function renderTrips(){
     const tbody = $('tripTableBody');
     if(!db.trips || !db.trips.length){
-        tbody.innerHTML = '<tr><td colspan="4" class="muted" style="text-align:center;padding:20px">Nema unetih putnih troškova.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="muted" style="text-align:center;padding:20px">Nema unetih troškova.</td></tr>';
         return;
     }
 
     db.trips.sort((a,b)=>new Date(b.date)-new Date(a.date));
-
     tbody.innerHTML = db.trips.map((t, i)=>`<tr>
         <td><b>${t.date}</b><br><span class="muted" style="font-size:11px">${t.route}</span></td>
         <td>${t.type}</td>
@@ -487,11 +510,9 @@ function renderTrips(){
     </tr>`).join('');
 }
 
-// AKCIJE DODAVANJA
 $('addBtn').onclick=()=>{
     const title = $('sTitle').value.trim();
     if(!title){ alert('Unesite naziv intervencije.'); return; }
-    
     if(!db.records) db.records = [];
     db.records.push({
         id: Date.now(),
@@ -502,96 +523,53 @@ $('addBtn').onclick=()=>{
         mech: $('sMech').value,
         note: $('sNote').value
     });
-
     sv('atmosAutoDb', db);
     render();
-
-    $('sTitle').value = '';
-    $('sKm').value = '';
-    $('sCost').value = '';
-    $('sMech').value = '';
-    $('sNote').value = '';
+    $('sTitle').value = ''; $('sKm').value = ''; $('sCost').value = ''; $('sMech').value = ''; $('sNote').value = '';
 };
 
 $('addFuelBtn').onclick=()=>{
     const km = $('fKm').value;
     const liters = $('fLiters').value;
-    if(!km || !liters){ alert('Unesite kilometražu i količinu goriva.'); return; }
-
+    if(!km || !liters){ alert('Unesite kilometražu i litražu.'); return; }
     if(!db.fuels) db.fuels = [];
     db.fuels.push({
         id: Date.now(),
         date: $('fDate').value || new Date().toISOString().split('T')[0],
-        km: km,
-        liters: liters,
-        cost: $('fCost').value || 0
+        km: km, liters: liters, cost: $('fCost').value || 0
     });
-
     sv('atmosAutoDb', db);
     render();
-
-    $('fKm').value = '';
-    $('fLiters').value = '';
-    $('fCost').value = '';
+    $('fKm').value = ''; $('fLiters').value = ''; $('fCost').value = '';
 };
 
 $('addTripBtn').onclick=()=>{
     const route = $('tRoute').value.trim();
-    if(!route){ alert('Unesite relaciju ili naziv putovanja.'); return; }
-
+    if(!route){ alert('Unesite relaciju.'); return; }
     if(!db.trips) db.trips = [];
     db.trips.push({
         id: Date.now(),
         date: $('tDate').value || new Date().toISOString().split('T')[0],
-        route: route,
-        type: $('tType').value || 'Trošak',
-        cost: $('tCost').value || '0'
+        route: route, type: $('tType').value || 'Trošak', cost: $('tCost').value || '0'
     });
-
     sv('atmosAutoDb', db);
     render();
-
-    $('tRoute').value = '';
-    $('tType').value = '';
-    $('tCost').value = '';
+    $('tRoute').value = ''; $('tType').value = ''; $('tCost').value = '';
 };
 
-window.delRecord=(i)=>{
-    if(confirm('Brišete ovaj servisni zapis?')){
-        db.records.splice(i, 1);
-        sv('atmosAutoDb', db);
-        render();
-    }
-};
+window.delRecord=(i)=>{ if(confirm('Brišete zapis?')){ db.records.splice(i,1); sv('atmosAutoDb',db); render(); } };
+window.delFuel=(i)=>{ if(confirm('Brišete sipanje?')){ db.fuels.splice(i,1); sv('atmosAutoDb',db); render(); } };
+window.delTrip=(i)=>{ if(confirm('Brišete trošak?')){ db.trips.splice(i,1); sv('atmosAutoDb',db); render(); } };
 
-window.delFuel=(i)=>{
-    if(confirm('Brišete ovaj unos goriva?')){
-        db.fuels.splice(i, 1);
-        sv('atmosAutoDb', db);
-        render();
-    }
-};
-
-window.delTrip=(i)=>{
-    if(confirm('Brišete ovaj putni trošak?')){
-        db.trips.splice(i, 1);
-        sv('atmosAutoDb', db);
-        render();
-    }
-};
-
-// EXPORT JSON
 $('expBtn').onclick=()=>{
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
     const dlAnchor = document.createElement('a');
     dlAnchor.setAttribute("href", dataStr);
-    dlAnchor.setAttribute("download", `atmos_auto_servisna_knjizica_${db.plate || 'vozilo'}.json`);
+    dlAnchor.setAttribute("download", `atmos_auto_${db.plate || 'vozilo'}.json`);
     document.body.appendChild(dlAnchor);
-    dlAnchor.click();
-    dlAnchor.remove();
+    dlAnchor.click(); dlAnchor.remove();
 };
 
-// IMPORT JSON
 $('impFile').onchange=(e)=>{
     const file = e.target.files[0];
     if(!file) return;
@@ -606,6 +584,8 @@ $('impFile').onchange=(e)=>{
                 $('carPlate').value = db.plate || '';
                 if(db.planer){
                     $('pRegDate').value = db.planer.regDate || '';
+                    $('pAsstDate').value = db.planer.asstDate || '';
+                    $('pInsDate').value = db.planer.insDate || '';
                     $('pMaliKm').value = db.planer.maliKm || '';
                     $('pVelikiKm').value = db.planer.velikiKm || '';
                 }
@@ -617,16 +597,13 @@ $('impFile').onchange=(e)=>{
                     $('specNotes').value = db.spec.notes || '';
                 }
                 render();
-                alert('Svi podaci su uspešno uvezeni u Atmos Auto knjižicu!');
+                alert('Podaci uspešno uvezeni!');
             }
-        }catch(err){
-            alert('Greška pri čitanju JSON fajla.');
-        }
+        }catch(err){ alert('Greška pri uvozu fajla.'); }
     };
     reader.readAsText(file);
 };
 
-// INSTALACIJA DUGME (PWA)
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -638,12 +615,10 @@ $('installBtn').onclick = async () => {
     if (deferredPrompt) {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            $('installBtn').style.display = 'none';
-        }
+        if (outcome === 'accepted') { $('installBtn').style.display = 'none'; }
         deferredPrompt = null;
     } else {
-        alert('Da biste instalirali aplikaciju, otvorite meni pretraživača (tri tačkice u uglu) i izaberite "Instaliraj aplikaciju" ili "Dodaj na početni ekran".');
+        alert('Otvorite meni pretraživača (tri tačkice) i izaberite "Instaliraj aplikaciju" ili "Dodaj na početni ekran".');
     }
 };
 
