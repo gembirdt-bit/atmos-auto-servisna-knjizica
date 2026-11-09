@@ -145,7 +145,7 @@ function migrate(o){
   v.trips=(o.trips||[]).map(t=>({id:t.id||uid(),date:t.date,route:t.route||'',type:t.type||'Trošak',amount:num(String(t.cost).replace(/[^\d.,]/g,'')),cur:/eur|€/i.test(t.cost)?'EUR':'RSD',note:String(t.cost||'')}));
   return v;
 }
-function fresh(){const v=newVeh();return{v:2,settings:{theme:'dark',accent:ACCS[0],cur:'RSD',eurRate:117.2,unit:'l100',warnDays:30,warnKm:1500,fs:'m',notif:false,lastNotif:'',backupDays:7,lastExport:'',snapKeep:7,fileSync:false},vehicles:[v],active:v.id}}
+function fresh(){const v=newVeh();return{v:2,settings:{theme:'dark',accent:ACCS[0],cur:'RSD',eurRate:117.2,unit:'l100',warnDays:30,warnKm:1500,fs:'m',notif:false,lastNotif:'',backupDays:7,lastExport:'',snapKeep:7,fileSync:false,period:'all'},vehicles:[v],active:v.id}}
 function load(){
   try{const r=JSON.parse(localStorage.getItem(KEY));if(r&&r.vehicles&&r.vehicles.length){r.settings=Object.assign(fresh().settings,r.settings);return r}}catch{}
   const d=fresh();
@@ -219,7 +219,7 @@ function restoreSnap(i){
   save();go('pregled');toast('Podaci vraćeni ✔');
 }
 /* ---------- AŽURIRANJE APLIKACIJE ---------- */
-const APP_VERSION='2.4';
+const APP_VERSION='2.5';
 const PRE='atmosAuto2_preupdate';
 const countAll=d=>d.vehicles.reduce((s,v)=>s+v.records.length+v.fuels.length+v.trips.length+(v.reminders||[]).length,0)+d.vehicles.length;
 async function fetchRemoteVersion(){
@@ -327,8 +327,9 @@ const toBase=(a,c)=>c==='EUR'?a*S().eurRate:a;
 const kmFmt=n=>Math.round(n).toLocaleString('sr-RS')+' km';
 const maxKm=v=>Math.max(0,...v.records.map(r=>num(r.km)),...v.fuels.map(f=>num(f.km)));
 function consFmt(l100){if(!l100)return'—';return S().unit==='l100'?l100.toFixed(1)+' L/100km':(100/l100).toFixed(1)+' km/L'}
-function fuelCalc(v){
-  const f=[...v.fuels].sort((a,b)=>num(a.km)-num(b.km)||String(a.date).localeCompare(b.date));
+function fuelCalc(v,fl){
+  const src=fl||v.fuels;
+  const f=[...src].sort((a,b)=>num(a.km)-num(b.km)||String(a.date).localeCompare(b.date));
   const per={};let last=null,acc=0,tl=0,td=0;
   f.forEach(x=>{const km=num(x.km),l=num(x.liters);
     if(last===null){if(x.full!==false){last=km;acc=0}return}
@@ -337,13 +338,43 @@ function fuelCalc(v){
   });
   let cpk=0;
   if(f.length>1){const d=num(f[f.length-1].km)-num(f[0].km);const c=f.slice(1).reduce((s,x)=>s+num(x.cost),0);if(d>0)cpk=c/d}
-  const tL=v.fuels.reduce((s,x)=>s+num(x.liters),0),tC=v.fuels.reduce((s,x)=>s+num(x.cost),0);
+  const tL=src.reduce((s,x)=>s+num(x.liters),0),tC=src.reduce((s,x)=>s+num(x.cost),0);
   return{per,avg:td?tl/td*100:0,cpk,ppl:tL?tC/tL:0,totalCost:tC}
 }
 const totals=v=>({
   service:v.records.reduce((s,r)=>s+num(r.cost),0),
   fuel:v.fuels.reduce((s,f)=>s+num(f.cost),0),
   trips:v.trips.reduce((s,t)=>s+toBase(num(t.amount),t.cur),0)});
+/* ---------- PERIOD / PLANIRANI TROŠKOVI ---------- */
+const PERIODS=[['6m','6 meseci'],['12m','Godina'],['all','Od početka'],['plan','Planirano']];
+function cutoff(){
+  const p=S().period;
+  if(p==='6m'||p==='12m'){const d=new Date();d.setMonth(d.getMonth()-(p==='6m'?6:12));return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+  return'';
+}
+function filt(v){const c=cutoff(),ok=r=>!c||String(r.date)>=c;return{records:v.records.filter(ok),fuels:v.fuels.filter(ok),trips:v.trips.filter(ok)}}
+function periodBar(withPlan){
+  const p=S().period||'all',opts=withPlan?PERIODS:PERIODS.slice(0,3);
+  return`<div class="seg noprint" style="margin-bottom:12px">${opts.map(([k,l])=>`<button data-set="period" data-val="${k}" class="${(p===k||(!withPlan&&p==='plan'&&k==='all'))?'on':''}">${l}</button>`).join('')}</div>`;
+}
+function planCard(v){
+  const items=(v.reminders||[]).filter(r=>!r.done);
+  const total=items.reduce((s,r)=>s+num(r.est),0),noEst=items.filter(r=>!num(r.est)).length;
+  const d=new Date();d.setMonth(d.getMonth()-12);const c=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  const t12=totals({records:v.records.filter(r=>r.date>=c),fuels:v.fuels.filter(r=>r.date>=c),trips:v.trips.filter(r=>r.date>=c)});
+  const avg=(t12.service+t12.fuel+t12.trips)/12;
+  return`<div class="grid g3" style="margin-bottom:12px">
+    <div class="stat"><small>Planirano ukupno</small><b>${money(total)}</b></div>
+    <div class="stat"><small>Stavki na listi</small><b>${items.length}${noEst?` <span class="small muted">(${noEst} bez procene)</span>`:''}</b></div>
+    <div class="stat"><small>Prosek mesečno (poslednjih 12 mes.)</small><b>${money(avg)}</b></div>
+  </div>
+  <div class="card"><h3>📝 Planirani troškovi <button class="btn-s noprint" data-act="add" data-t="podsetnik">＋ Dodaj</button></h3>
+    ${items.length?items.map(r=>`<div class="item" style="margin-bottom:6px"><div class="ic">📝</div><div class="grow"><div class="t">${esc(r.title)}</div>
+      <div class="small muted">${[r.date?fmtDate(r.date):'',r.km?kmFmt(num(r.km)):'',r.note].filter(Boolean).map(esc).join(' · ')||'Bez roka'}</div>
+      <div class="acts"><button class="btn-s btn-p" data-act="rcomplete" data-id="${r.id}">✔ Urađeno → upiši servis</button><button class="btn-s" data-act="edit" data-t="podsetnik" data-id="${r.id}">✏️</button></div></div>
+      <div class="amt">${num(r.est)?money(num(r.est)):'<span class="muted small">bez procene</span>'}</div></div>`).join(''):'<div class="empty">Nema planiranih stavki. Dodaj stavku sa procenom cene.</div>'}
+  </div>`;
+}
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2200)}
 
 function dateStat(s,label){
@@ -370,8 +401,8 @@ function allReminders(v){
     if(r.done)return;
     const a=r.date?dateStat(r.date,r.title):null,b=r.km?kmStat(r.km,r.title,km):null;
     const worst=[a,b].filter(Boolean).sort((x,y)=>({bad:0,warn:1,ok:2}[x.lvl]-{bad:0,warn:1,ok:2}[y.lvl]))[0];
-    if(worst)out.push(Object.assign({},worst,{ic:'🔔',src:'custom',id:r.id}));
-    else out.push({lvl:'n',text:r.title,badge:'Na listi',ic:'📝',src:'custom',id:r.id});
+    if(worst)out.push(Object.assign({},worst,{ic:'🔔',src:'custom',id:r.id,est:num(r.est)}));
+    else out.push({lvl:'n',text:r.title,badge:'Na listi',ic:'📝',src:'custom',id:r.id,est:num(r.est)});
   });
   return out;
 }
@@ -407,11 +438,12 @@ function render(){
 
 /* ---------- STRANICE ---------- */
 function pgPregled(){
-  const v=V(),km=maxKm(v),fc=fuelCalc(v),t=totals(v),total=t.service+t.fuel+t.trips;
+  const v=V(),km=maxKm(v),f=filt(v),fc=fuelCalc(v,f.fuels),t=totals(f),total=t.service+t.fuel+t.trips;
+  const N=S().period==='6m'?6:12;
   const al=allReminders(v).filter(a=>a.lvl==='bad'||a.lvl==='warn').sort((a,b)=>lvlOrder[a.lvl]-lvlOrder[b.lvl]);
   // grafikon 6 meseci
   const months=[];const d=new Date();d.setDate(1);
-  for(let i=5;i>=0;i--){const x=new Date(d.getFullYear(),d.getMonth()-i,1);months.push({k:x.getFullYear()+'-'+pad(x.getMonth()+1),l:['Jan','Feb','Mar','Apr','Maj','Jun','Jul','Avg','Sep','Okt','Nov','Dec'][x.getMonth()],a:0,b:0,c:0})}
+  for(let i=N-1;i>=0;i--){const x=new Date(d.getFullYear(),d.getMonth()-i,1);months.push({k:x.getFullYear()+'-'+pad(x.getMonth()+1),l:['Jan','Feb','Mar','Apr','Maj','Jun','Jul','Avg','Sep','Okt','Nov','Dec'][x.getMonth()],a:0,b:0,c:0})}
   const idx=k=>months.find(m=>m.k===k);
   v.records.forEach(r=>{const m=idx(String(r.date).slice(0,7));if(m)m.a+=num(r.cost)});
   v.fuels.forEach(r=>{const m=idx(String(r.date).slice(0,7));if(m)m.b+=num(r.cost)});
@@ -439,18 +471,19 @@ function pgPregled(){
     <button class="btn-p grow" data-act="add" data-t="gorivo">⛽ Gorivo</button>
     <button class="btn-p grow" data-act="add" data-t="putovanje">🗺️ Trošak</button>
   </div>
-  <div class="grid g4" style="margin-bottom:12px">
+  ${periodBar(true)}
+  ${S().period==='plan'?planCard(v):`<div class="grid g4" style="margin-bottom:12px">
     <div class="stat"><small>Ukupni troškovi</small><b>${money(total)}</b></div>
     <div class="stat"><small>Prosečna potrošnja</small><b>${consFmt(fc.avg)}</b></div>
     <div class="stat"><small>Trošak goriva / km</small><b>${fc.cpk?fc.cpk.toFixed(1)+' '+S().cur:'—'}</b></div>
     <div class="stat"><small>Prosečna cena litra</small><b>${fc.ppl?fc.ppl.toFixed(1)+' '+S().cur:'—'}</b></div>
   </div>
   <div class="grid g3" style="margin-bottom:12px">
-    <div class="stat"><small>Servisi (${v.records.length})</small><b>${money(t.service)}</b></div>
-    <div class="stat"><small>Gorivo (${v.fuels.length})</small><b>${money(t.fuel)}</b></div>
-    <div class="stat"><small>Putovanja (${v.trips.length})</small><b>${money(t.trips)}</b></div>
-  </div>
-  <div class="card"><h3>📊 Troškovi — poslednjih 6 meseci</h3>
+    <div class="stat"><small>Servisi (${f.records.length})</small><b>${money(t.service)}</b></div>
+    <div class="stat"><small>Gorivo (${f.fuels.length})</small><b>${money(t.fuel)}</b></div>
+    <div class="stat"><small>Putovanja (${f.trips.length})</small><b>${money(t.trips)}</b></div>
+  </div>`}
+  <div class="card"><h3>📊 Troškovi — poslednjih ${N} meseci</h3>
     <div class="chart">${chart}</div>
     <div class="legend"><span class="a">Servisi</span><span class="b">Gorivo</span><span class="c">Putovanja</span></div>
   </div>
@@ -462,12 +495,13 @@ function pgPregled(){
 
 function pgServisi(){
   const v=V();
-  let list=[...v.records].sort((a,b)=>String(b.date).localeCompare(String(a.date))||num(b.km)-num(a.km));
+  let list=[...filt(v).records].sort((a,b)=>String(b.date).localeCompare(String(a.date))||num(b.km)-num(a.km));
   const q=ui.q.toLowerCase();
   if(ui.cat)list=list.filter(r=>r.cat===ui.cat);
   if(q)list=list.filter(r=>[r.title,r.mech,r.note,r.cat].join(' ').toLowerCase().includes(q));
   const sum=list.reduce((s,r)=>s+num(r.cost),0);
   return`
+  ${periodBar(false)}
   <div class="row wrap" style="margin-bottom:12px;gap:8px">
     <input class="fld grow" id="q" placeholder="🔍 Pretraga servisa..." value="${esc(ui.q)}" style="min-width:160px">
     <select class="fld" id="catF" style="width:auto"><option value="">Sve kategorije</option>${CATS.map(c=>`<option ${c===ui.cat?'selected':''}>${c}</option>`).join('')}</select>
@@ -482,9 +516,10 @@ function pgServisi(){
 }
 
 function pgGorivo(){
-  const v=V(),fc=fuelCalc(v);
-  const list=[...v.fuels].sort((a,b)=>num(b.km)-num(a.km)||String(b.date).localeCompare(String(a.date)));
+  const v=V(),fl=filt(v).fuels,fc=fuelCalc(v,fl);
+  const list=[...fl].sort((a,b)=>num(b.km)-num(a.km)||String(b.date).localeCompare(String(a.date)));
   return`
+  ${periodBar(false)}
   <div class="grid g3" style="margin-bottom:12px">
     <div class="stat"><small>Prosek</small><b>${consFmt(fc.avg)}</b></div>
     <div class="stat"><small>Cena litra (prosek)</small><b>${fc.ppl?fc.ppl.toFixed(1)+' '+S().cur:'—'}</b></div>
@@ -500,9 +535,11 @@ function pgGorivo(){
 
 function pgPutovanja(){
   const v=V();
-  const list=[...v.trips].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-  const byCur={};v.trips.forEach(t=>byCur[t.cur]=(byCur[t.cur]||0)+num(t.amount));
+  const ft=filt(v).trips;
+  const list=[...ft].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const byCur={};ft.forEach(t=>byCur[t.cur]=(byCur[t.cur]||0)+num(t.amount));
   return`
+  ${periodBar(false)}
   <div class="grid g3" style="margin-bottom:12px">
     ${Object.keys(byCur).map(c=>`<div class="stat"><small>Ukupno ${c}</small><b>${money(byCur[c],c)}</b></div>`).join('')||'<div class="stat"><small>Ukupno</small><b>0</b></div>'}
   </div>
@@ -520,7 +557,7 @@ function pgPodsetnici(){
   const cls={bad:'b-bad',warn:'b-warn',ok:'b-ok',n:'b-n'};
   return`
   <div class="card"><h3>🔔 Status</h3>
-    ${all.length?all.map(a=>`<div class="row sp" style="padding:8px 0;border-bottom:1px solid var(--line)"><div class="row grow"><span style="font-size:1.3rem">${a.ic}</span><div class="grow">${esc(a.text.split(':')[0])}</div></div><span class="badge ${cls[a.lvl]}">${esc(a.badge)}</span>
+    ${all.length?all.map(a=>`<div class="row sp" style="padding:8px 0;border-bottom:1px solid var(--line)"><div class="row grow"><span style="font-size:1.3rem">${a.ic}</span><div class="grow">${esc(a.text.split(':')[0])}${a.est?` <span class="small muted">· ${money(a.est)}</span>`:''}</div></div><span class="badge ${cls[a.lvl]}">${esc(a.badge)}</span>
       ${a.src==='custom'?`<button class="btn-s" data-act="rdone" data-id="${a.id}">✔</button><button class="btn-s" data-act="edit" data-t="podsetnik" data-id="${a.id}">✏️</button>`:''}</div>`).join(''):'<div class="empty">Nema podsetnika. Unesi datume ispod ili dodaj svoj (+).</div>'}
   </div>
   <div class="card"><h3>📅 Redovni rokovi</h3>
@@ -638,15 +675,16 @@ const FORMS={
     {k:'note',l:'Beleška',t:'text'}]},
   podsetnik:{title:'Podsetnik',list:'reminders',f:[
     {k:'title',l:'Naziv',t:'text',req:1,ph:'Zamena guma, tehnički pregled...'},
+    {k:'est',l:'Planirani trošak (procena)',t:'number'},
     {k:'date',l:'Datum (opciono)',t:'date',h:1},{k:'km',l:'Kilometraža (opciono)',t:'number',h:1},
     {k:'note',l:'Beleška',t:'text'}]}
 };
 let editing=null;
-function openForm(type,id){
+function openForm(type,id,pre){
   const F=FORMS[type],v=V();const item=id?v[F.list].find(x=>x.id===id):null;
-  editing={type,id};
+  editing={type,id,rem:pre&&pre._rem};
   const fld=x=>{
-    let val=item?item[x.k]:(x.d?x.d():'');
+    let val=item?item[x.k]:(pre&&pre[x.k]!==undefined?pre[x.k]:(x.d?x.d():''));
     if(val==null)val='';
     let el;
     if(x.t==='select')el=`<select class="fld" name="${x.k}">${x.o.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select>`;
@@ -662,7 +700,7 @@ function openForm(type,id){
 }
 $('dlgForm').addEventListener('submit',e=>{
   e.preventDefault();
-  const {type,id}=editing,F=FORMS[type],v=V(),fd=new FormData($('dlgForm')),o={};
+  const {type,id,rem}=editing,F=FORMS[type],v=V(),fd=new FormData($('dlgForm')),o={};
   F.f.forEach(x=>{
     if(x.t==='check')o[x.k]=$('dlgForm').elements[x.k].checked;
     else{const val=fd.get(x.k);o[x.k]=(x.t==='number'&&val!=='')?num(val):(val||'')}
@@ -670,7 +708,8 @@ $('dlgForm').addEventListener('submit',e=>{
   if(type==='gorivo'&&(!o.km||!o.liters)){toast('Unesi kilometražu i litre');return}
   if(!o.date&&F.f.some(x=>x.k==='date')&&type!=='podsetnik')o.date=todayStr();
   if(id){Object.assign(v[F.list].find(x=>x.id===id),o)}
-  else{o.id=uid();if(type==='podsetnik')o.done=false;v[F.list].push(o)}
+  else{o.id=uid();if(type==='podsetnik')o.done=false;v[F.list].push(o);
+    if(rem){const rr=(v.reminders||[]).find(x=>x.id===rem);if(rr)rr.done=true}}
   save();$('dlg').close();render();toast('Sačuvano ✔');
 });
 document.addEventListener('click',e=>{if(e.target.id==='dlgCancel')$('dlg').close()});
@@ -709,6 +748,7 @@ document.addEventListener('click',e=>{
     case'restore':restoreSnap(+d.i);break;
     case'checkupd':checkUpdate(false);break;
     case'doupd':if(confirm('Ažurirati aplikaciju? Podaci se prvo sačuvaju i preuzima se izvoz.'))doUpdate();break;
+    case'rcomplete':{const r=v.reminders.find(x=>x.id===d.id);if(r)openForm('servis',null,{title:r.title,cost:num(r.est)||'',note:r.note||'',_rem:r.id});break}
     case'testnotif':testNotif();break;
     case'filepick':pickFile();break;
     case'fileresume':resumeFile();break;
