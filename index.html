@@ -218,6 +218,56 @@ function restoreSnap(i){
   db=JSON.parse(src.data);db.settings=Object.assign(fresh().settings,db.settings);
   save();go('pregled');toast('Podaci vraćeni ✔');
 }
+/* ---------- AŽURIRANJE APLIKACIJE ---------- */
+const APP_VERSION='2.4';
+const PRE='atmosAuto2_preupdate';
+const countAll=d=>d.vehicles.reduce((s,v)=>s+v.records.length+v.fuels.length+v.trips.length+(v.reminders||[]).length,0)+d.vehicles.length;
+async function fetchRemoteVersion(){
+  const r=await fetch(location.href.split('#')[0].split('?')[0],{cache:'no-store'});
+  if(!r.ok)throw new Error('http '+r.status);
+  const m=(await r.text()).match(/APP_VERSION\s*=\s*'([^']+)'/);
+  return m?m[1]:null;
+}
+async function checkUpdate(silent){
+  if(!navigator.onLine){if(!silent)toast('Nema internet veze');return}
+  try{
+    const rv=await fetchRemoteVersion();
+    try{const reg=await navigator.serviceWorker?.getRegistration();reg&&reg.update()}catch{}
+    if(!rv){if(!silent)toast('Ne mogu da pročitam verziju sa servera');return}
+    S().lastUpdCheck=todayStr();
+    try{localStorage.setItem(KEY,JSON.stringify(db))}catch{}
+    if(rv!==APP_VERSION){
+      ui.upd=rv;render();
+      if(!silent&&confirm(`Dostupna je verzija ${rv} (imaš ${APP_VERSION}). Ažurirati sada?\n\nPre toga se čuva interna kopija i preuzima izvoz, a posle ažuriranja se podaci proveravaju i po potrebi vraćaju.`))doUpdate();
+    }else{ui.upd=null;if(!silent){toast(`Imaš najnoviju verziju (${APP_VERSION}) ✔`);render()}}
+  }catch(e){if(!silent)toast('Provera nije uspela (nema mreže ili aplikacija nije postavljena na server)')}
+}
+async function doUpdate(){
+  try{
+    takeSnap('pre-ažuriranja',true);
+    localStorage.setItem(PRE,JSON.stringify({t:new Date().toISOString(),from:APP_VERSION,n:countAll(db),data:JSON.stringify(db)}));
+    S().lastExport=todayStr();
+    try{localStorage.setItem(KEY,JSON.stringify(db))}catch{}
+    download(`atmos_auto_pre_azuriranja_${todayStr()}.json`,JSON.stringify(db,null,2),'application/json');
+    toast('Kopija sačuvana, ažuriram…');
+    await new Promise(r=>setTimeout(r,1500));
+    if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()))}
+    if(window.caches){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}
+    await fetch(location.href.split('#')[0],{cache:'reload'}).catch(()=>{});
+    location.reload();
+  }catch(e){toast('Ažuriranje nije uspelo: '+(e.message||e))}
+}
+function verifyAfterUpdate(){
+  try{
+    const raw=localStorage.getItem(PRE);if(!raw)return;
+    const pre=JSON.parse(raw);localStorage.removeItem(PRE);
+    if(countAll(db)<pre.n){
+      db=JSON.parse(pre.data);db.settings=Object.assign(fresh().settings,db.settings);
+      localStorage.setItem(KEY,JSON.stringify(db));
+      setTimeout(()=>toast('Podaci vraćeni iz kopije pre ažuriranja ✔'),800);
+    }else setTimeout(()=>toast(`Ažurirano na ${APP_VERSION} · podaci provereni (${countAll(db)} stavki) ✔`),800);
+  }catch{}
+}
 function daysSinceExport(){const e=S().lastExport;return e?-dayDiff(e):null}
 function backupDue(){
   const n=num(S().backupDays);if(!n||!hasData(db))return false;
@@ -381,6 +431,7 @@ function pgPregled(){
     <div class="odo">${km?kmFmt(km):'0 km'}</div>
     <div class="p">poslednja zabeležena kilometraža</div>
   </div>
+  ${ui.upd?`<div class="card noprint" style="border-color:var(--acc)"><h3>🔄 Dostupna nova verzija (${esc(ui.upd)})</h3><div class="row"><button class="btn-p grow" data-act="doupd">⬆ Ažuriraj</button></div></div>`:''}
   ${backupDue()?`<div class="card noprint" style="border-color:var(--warn)"><h3>💾 Vreme je za rezervnu kopiju</h3><div class="small muted" style="margin-bottom:10px">${daysSinceExport()===null?'Još nikad nisi izvezao podatke.':'Poslednji izvoz pre '+daysSinceExport()+' d.'} Podaci su samo na ovom uređaju.</div><div class="row"><button class="btn-p grow" data-act="export">⬇ Preuzmi kopiju</button><button class="grow" data-act="snooze">Podseti me kasnije</button></div></div>`:''}
   ${al.length?`<div class="card"><h3>⚠️ Zahteva pažnju</h3>${al.map(a=>`<div class="alert ${a.lvl}"><span>${a.ic}</span><span>${esc(a.text)}</span></div>`).join('')}</div>`:''}
   <div class="row wrap noprint" style="margin-bottom:12px;gap:8px">
@@ -533,6 +584,10 @@ function pgPodesavanja(){
     <button data-act="testnotif" style="width:100%">🧪 Pošalji probno obaveštenje</button>
     <div class="small muted" style="margin-top:8px">Obaveštenje stiže pri otvaranju aplikacije. Ako je instaliraš na početni ekran (Chrome/Edge, Android ili računar), pokušaće da proverava rokove i u pozadini jednom dnevno, što pregledač ne garantuje. Na ikonici se prikazuje i broj stavki koje zahtevaju pažnju, gde je to podržano.</div>
   </div>
+  <div class="card"><h3>🔄 Ažuriranje aplikacije</h3>
+    <div class="small muted" style="margin-bottom:10px">Instalirana verzija: <b>${APP_VERSION}</b>${ui.upd?` · dostupna: <b>${esc(ui.upd)}</b>`:''}. Pri ažuriranju se prvo čuva interna kopija i preuzima izvoz, zatim se učitava nova verzija, a podaci se proveravaju i po potrebi automatski vraćaju.</div>
+    <div class="row"><button class="grow" data-act="checkupd">🔍 Proveri ažuriranje</button>${ui.upd?`<button class="btn-p grow" data-act="doupd">⬆ Ažuriraj na ${esc(ui.upd)}</button>`:''}</div>
+  </div>
   <div class="card"><h3>🛡️ Rezervne kopije</h3>
     <div class="grid g2" style="margin-bottom:10px">
       <div><label class="l">Podsetnik za izvoz</label><select class="fld" data-cfg="backupDays" data-n="1">${[[0,'Isključen'],[1,'Svaki dan'],[7,'Jednom nedeljno'],[14,'Na 2 nedelje'],[30,'Jednom mesečno']].map(([k,l])=>`<option value="${k}" ${num(s.backupDays)===k?'selected':''}>${l}</option>`).join('')}</select></div>
@@ -652,6 +707,8 @@ document.addEventListener('click',e=>{
     case'export':S().lastExport=todayStr();save();download(`atmos_auto_backup_${todayStr()}.json`,JSON.stringify(db,null,2),'application/json');toast('Rezervna kopija preuzeta');render();break;
     case'snooze':{const n=num(S().backupDays)||7;const d=new Date();d.setDate(d.getDate()-n+1);S().lastExport=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());save();render();toast('Podsetiću te sutra');break}
     case'restore':restoreSnap(+d.i);break;
+    case'checkupd':checkUpdate(false);break;
+    case'doupd':if(confirm('Ažurirati aplikaciju? Podaci se prvo sačuvaju i preuzima se izvoz.'))doUpdate();break;
     case'testnotif':testNotif();break;
     case'filepick':pickFile();break;
     case'fileresume':resumeFile();break;
@@ -722,8 +779,10 @@ matchMedia('(prefers-color-scheme: light)').addEventListener?.('change',()=>S().
 let wasWide=innerWidth>=900;
 addEventListener('resize',()=>{const w=innerWidth>=900;if(w!==wasWide){wasWide=w;render()}});
 
+verifyAfterUpdate();
 takeSnap('automatski');
 render();
+if(navigator.onLine&&S().lastUpdCheck!==todayStr())setTimeout(()=>checkUpdate(true),2500);
 fileInit().then(()=>{if(ui.tab==='podesavanja')render()});
 setTimeout(()=>checkNotif(),1200);
 syncAlertData();
