@@ -219,7 +219,7 @@ function restoreSnap(i){
   save();go('pregled');toast('Podaci vraćeni ✔');
 }
 /* ---------- AŽURIRANJE APLIKACIJE ---------- */
-const APP_VERSION='2.6';
+const APP_VERSION='2.7';
 const PRE='atmosAuto2_preupdate';
 const countAll=d=>d.vehicles.reduce((s,v)=>s+v.records.length+v.fuels.length+v.trips.length+(v.reminders||[]).length,0)+d.vehicles.length;
 async function fetchRemoteVersion(){
@@ -270,17 +270,23 @@ function verifyAfterUpdate(){
 }
 async function shareBackup(){
   const name=`atmos_auto_backup_${todayStr()}.json`,text=JSON.stringify(db,null,2);
-  try{
-    const file=new File([text],name,{type:'application/json'});
-    if(navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:'Atmos Auto — rezervna kopija',text:'Rezervna kopija podataka (Atmos Auto)'});
-      S().lastExport=todayStr();save();render();toast('Kopija podeljena ✔');
-    }else{
-      download(name,text,'application/json');
-      S().lastExport=todayStr();save();render();
-      toast('Deljenje nije podržano — kopija je preuzeta kao fajl');
-    }
-  }catch(e){if(e&&e.name!=='AbortError')toast('Deljenje nije uspelo')}
+  const done=msg=>{S().lastExport=todayStr();save();render();toast(msg)};
+  if(!window.isSecureContext||!navigator.share){
+    download(name,text,'application/json');
+    done('Deljenje traži https adresu i podržan pregledač — kopija je preuzeta kao fajl');
+    return;
+  }
+  let lastErr=null;
+  for(const type of ['application/json','text/plain']){
+    try{
+      const file=new File([text],name,{type});
+      if(navigator.canShare&&!navigator.canShare({files:[file]}))continue;
+      await navigator.share({files:[file],title:name});
+      done('Kopija podeljena ✔');return;
+    }catch(e){if(e&&e.name==='AbortError')return;lastErr=e}
+  }
+  download(name,text,'application/json');
+  done('Deljenje nije uspelo'+(lastErr?` (${lastErr.name})`:' (fajlovi nisu podržani)')+' — kopija je preuzeta kao fajl');
 }
 function daysSinceExport(){const e=S().lastExport;return e?-dayDiff(e):null}
 function backupDue(){
