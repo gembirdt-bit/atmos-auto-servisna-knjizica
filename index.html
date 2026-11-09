@@ -114,7 +114,7 @@ footer{text-align:center;color:var(--muted);font-size:.75rem;padding:16px}
 
 <dialog id="dlg"><form class="dlg" id="dlgForm" method="dialog"></form></dialog>
 <div class="toast" id="toast"></div>
-<input type="file" id="impFile" accept=".json,application/json" hidden>
+<input type="file" id="impFile" accept=".json,.txt,application/json,text/plain" hidden>
 
 <script>
 'use strict';
@@ -219,7 +219,7 @@ function restoreSnap(i){
   save();go('pregled');toast('Podaci vraćeni ✔');
 }
 /* ---------- AŽURIRANJE APLIKACIJE ---------- */
-const APP_VERSION='2.7';
+const APP_VERSION='2.8';
 const PRE='atmosAuto2_preupdate';
 const countAll=d=>d.vehicles.reduce((s,v)=>s+v.records.length+v.fuels.length+v.trips.length+(v.reminders||[]).length,0)+d.vehicles.length;
 async function fetchRemoteVersion(){
@@ -277,12 +277,13 @@ async function shareBackup(){
     return;
   }
   let lastErr=null;
-  for(const type of ['application/json','text/plain']){
+  // Chrome često ne dozvoljava deljenje .json fajlova — zato se kao rezerva šalje isti sadržaj kao .txt
+  const cands=[new File([text],name,{type:'application/json'}),new File([text],name.replace(/\.json$/,'.txt'),{type:'text/plain'})];
+  for(const file of cands){
     try{
-      const file=new File([text],name,{type});
       if(navigator.canShare&&!navigator.canShare({files:[file]}))continue;
-      await navigator.share({files:[file],title:name});
-      done('Kopija podeljena ✔');return;
+      await navigator.share({files:[file],title:file.name});
+      done('Kopija podeljena ✔'+(file.name.endsWith('.txt')?' (kao .txt — pri uvozu izaberi taj fajl)':''));return;
     }catch(e){if(e&&e.name==='AbortError')return;lastErr=e}
   }
   download(name,text,'application/json');
