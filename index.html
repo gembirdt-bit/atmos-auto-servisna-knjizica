@@ -219,7 +219,7 @@ function restoreSnap(i){
   save();go('pregled');toast('Podaci vraćeni ✔');
 }
 /* ---------- AŽURIRANJE APLIKACIJE ---------- */
-const APP_VERSION='2.5';
+const APP_VERSION='2.6';
 const PRE='atmosAuto2_preupdate';
 const countAll=d=>d.vehicles.reduce((s,v)=>s+v.records.length+v.fuels.length+v.trips.length+(v.reminders||[]).length,0)+d.vehicles.length;
 async function fetchRemoteVersion(){
@@ -267,6 +267,20 @@ function verifyAfterUpdate(){
       setTimeout(()=>toast('Podaci vraćeni iz kopije pre ažuriranja ✔'),800);
     }else setTimeout(()=>toast(`Ažurirano na ${APP_VERSION} · podaci provereni (${countAll(db)} stavki) ✔`),800);
   }catch{}
+}
+async function shareBackup(){
+  const name=`atmos_auto_backup_${todayStr()}.json`,text=JSON.stringify(db,null,2);
+  try{
+    const file=new File([text],name,{type:'application/json'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:'Atmos Auto — rezervna kopija',text:'Rezervna kopija podataka (Atmos Auto)'});
+      S().lastExport=todayStr();save();render();toast('Kopija podeljena ✔');
+    }else{
+      download(name,text,'application/json');
+      S().lastExport=todayStr();save();render();
+      toast('Deljenje nije podržano — kopija je preuzeta kao fajl');
+    }
+  }catch(e){if(e&&e.name!=='AbortError')toast('Deljenje nije uspelo')}
 }
 function daysSinceExport(){const e=S().lastExport;return e?-dayDiff(e):null}
 function backupDue(){
@@ -464,7 +478,7 @@ function pgPregled(){
     <div class="p">poslednja zabeležena kilometraža</div>
   </div>
   ${ui.upd?`<div class="card noprint" style="border-color:var(--acc)"><h3>🔄 Dostupna nova verzija (${esc(ui.upd)})</h3><div class="row"><button class="btn-p grow" data-act="doupd">⬆ Ažuriraj</button></div></div>`:''}
-  ${backupDue()?`<div class="card noprint" style="border-color:var(--warn)"><h3>💾 Vreme je za rezervnu kopiju</h3><div class="small muted" style="margin-bottom:10px">${daysSinceExport()===null?'Još nikad nisi izvezao podatke.':'Poslednji izvoz pre '+daysSinceExport()+' d.'} Podaci su samo na ovom uređaju.</div><div class="row"><button class="btn-p grow" data-act="export">⬇ Preuzmi kopiju</button><button class="grow" data-act="snooze">Podseti me kasnije</button></div></div>`:''}
+  ${backupDue()?`<div class="card noprint" style="border-color:var(--warn)"><h3>💾 Vreme je za rezervnu kopiju</h3><div class="small muted" style="margin-bottom:10px">${daysSinceExport()===null?'Još nikad nisi izvezao podatke.':'Poslednji izvoz pre '+daysSinceExport()+' d.'} Podaci su samo na ovom uređaju.</div><div class="row wrap"><button class="btn-p grow" data-act="share">☁️ Podeli / sačuvaj na Drive</button><button class="grow" data-act="export">⬇ Preuzmi</button><button class="grow" data-act="snooze">Kasnije</button></div></div>`:''}
   ${al.length?`<div class="card"><h3>⚠️ Zahteva pažnju</h3>${al.map(a=>`<div class="alert ${a.lvl}"><span>${a.ic}</span><span>${esc(a.text)}</span></div>`).join('')}</div>`:''}
   <div class="row wrap noprint" style="margin-bottom:12px;gap:8px">
     <button class="btn-p grow" data-act="add" data-t="servis">🛠️ Servis</button>
@@ -490,7 +504,7 @@ function pgPregled(){
   <div class="card"><h3>🕒 Poslednje aktivnosti</h3>
     ${act.length?act.map(a=>`<div class="row sp" style="padding:8px 0;border-bottom:1px solid var(--line)"><div class="row grow"><span style="font-size:1.3rem">${a.ic}</span><div class="grow"><div class="t" style="font-weight:600">${esc(a.t)}</div><div class="small muted">${fmtDate(a.date)}${a.s?' · '+esc(a.s):''}</div></div></div><b>${a.a}</b></div>`).join(''):'<div class="empty">Još nema unosa. Dodaj prvi servis ili sipanje goriva.</div>'}
   </div>
-  <div class="row noprint" style="gap:8px"><button class="grow" onclick="window.print()">🖨️ Štampaj izveštaj</button></div>`;
+  <div class="row noprint wrap" style="gap:8px"><button class="btn-p grow" data-act="share">☁️ Podeli / sačuvaj na Drive</button><button class="grow" onclick="window.print()">🖨️ Štampaj izveštaj</button></div>`;
 }
 
 function pgServisi(){
@@ -630,6 +644,8 @@ function pgPodesavanja(){
       <div><label class="l">Podsetnik za izvoz</label><select class="fld" data-cfg="backupDays" data-n="1">${[[0,'Isključen'],[1,'Svaki dan'],[7,'Jednom nedeljno'],[14,'Na 2 nedelje'],[30,'Jednom mesečno']].map(([k,l])=>`<option value="${k}" ${num(s.backupDays)===k?'selected':''}>${l}</option>`).join('')}</select></div>
       <div><label class="l">Interne kopije (čuva se)</label><select class="fld" data-cfg="snapKeep" data-n="1">${[3,5,7,10,20].map(k=>`<option value="${k}" ${num(s.snapKeep)===k?'selected':''}>${k}</option>`).join('')}</select></div>
     </div>
+    <button class="btn-p" style="width:100%;margin-bottom:6px" data-act="share">☁️ Podeli / sačuvaj na Google Drive</button>
+    <div class="small muted" style="margin-bottom:10px">Otvara meni telefona ili računara, pa izabereš Google Drive, Dropbox, e-poštu ili drugo mesto za čuvanje.</div>
     <div class="small muted" style="margin-bottom:10px">Poslednji izvoz: ${s.lastExport?fmtDate(s.lastExport)+' (pre '+daysSinceExport()+' d)':'nikad'}. Aplikacija sama pravi interne kopije jednom dnevno i pre brisanja ili uvoza.</div>
     ${(()=>{const sn=getSnaps();return sn.length?`<label class="l">Interne kopije</label>${sn.map((x,i)=>`<div class="row sp small" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${new Date(x.t).toLocaleString('sr-RS',{dateStyle:'short',timeStyle:'short'})} <span class="muted">· ${esc(x.reason)}</span></span><button class="btn-s" data-act="restore" data-i="${i}">Vrati</button></div>`).join('')}<div style="height:10px"></div>`:'<div class="small muted" style="margin-bottom:10px">Još nema internih kopija.</div>'})()}
     <label class="l">Automatsko čuvanje u fajl</label>
@@ -746,6 +762,7 @@ document.addEventListener('click',e=>{
     case'export':S().lastExport=todayStr();save();download(`atmos_auto_backup_${todayStr()}.json`,JSON.stringify(db,null,2),'application/json');toast('Rezervna kopija preuzeta');render();break;
     case'snooze':{const n=num(S().backupDays)||7;const d=new Date();d.setDate(d.getDate()-n+1);S().lastExport=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());save();render();toast('Podsetiću te sutra');break}
     case'restore':restoreSnap(+d.i);break;
+    case'share':shareBackup();break;
     case'checkupd':checkUpdate(false);break;
     case'doupd':if(confirm('Ažurirati aplikaciju? Podaci se prvo sačuvaju i preuzima se izvoz.'))doUpdate();break;
     case'rcomplete':{const r=v.reminders.find(x=>x.id===d.id);if(r)openForm('servis',null,{title:r.title,cost:num(r.est)||'',note:r.note||'',_rem:r.id});break}
