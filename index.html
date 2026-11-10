@@ -851,5 +851,222 @@ setTimeout(()=>checkNotif(),1200);
 syncAlertData();
 if(S().notif)regPeriodic();
 </script>
+<script id="scan-js">
+/* ---------- SKENIRANJE RAČUNA: prepoznavanje polja iz teksta ---------- */
+const SCAN={
+  AMT:/(\d{1,3}(?:[. ]\d{3})+,\d{1,2}|\d{1,3}(?:[. ]\d{3})+(?![\d,])|\d+[.,]\d{1,2}(?!\d)|\d{3,})/g,
+  parseAmt(s){
+    s=String(s).replace(/\s/g,'');
+    if(/,\d{1,2}$/.test(s))s=s.replace(/\./g,'').replace(',','.');
+    else if(/^\d{1,3}(\.\d{3})+$/.test(s)||/^\d{1,3}(,\d{3})+$/.test(s))s=s.replace(/[.,]/g,'');
+    else s=s.replace(',','.');
+    const n=parseFloat(s);return isNaN(n)?0:n;
+  },
+  amounts(line){return (line.match(SCAN.AMT)||[]).map(SCAN.parseAmt).filter(n=>n>0)},
+  parseDate(text){
+    const re=/(?:^|[^\d])(\d{1,2})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(20\d{2}|\d{2})(?!\d)/g;let m,best=null;
+    const lines=text.split('\n');
+    for(const ln of lines){re.lastIndex=0;
+      while((m=re.exec(ln))){let d=+m[1],mo=+m[2],y=+m[3];if(y<100)y+=2000;
+        if(d<1||d>31||mo<1||mo>12)continue;
+        const iso=y+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+        if(!best||/datum|vreme|date/i.test(ln))best=iso;
+        if(/datum|date/i.test(ln))return iso;}}
+    return best;
+  },
+  clean(name){
+    return name.replace(SCAN.AMT,' ').replace(/\b\d+\s*[x×*]\s*(?=\s|$)/gi,' ').replace(/(^|\s)[x×*](?=\s|$)/gi,' ')
+      .replace(/\b(kom|kos|pcs|din|rsd|eur|[ђĐđ]|a|b|g)\b\.?/gi,' ').replace(/^[\s\d.)\-–•*:]+/,'').replace(/[|_=:;]+/g,' ').replace(/\s+/g,' ').trim();
+  },
+  SKIP:/pdv|porez|osnovica|ukupn|za\s*uplat|za\s*pla|gotovin|kartic|povrat|ra[cč]un\b|pib|mb\b|datum|fiskal|esir|ptfr|brojač|brojac|kasir|operater|hvala|ref\.|pfr|prodavac|kupac|broj|tel\b|tel\.|adresa|sifra|šifra|vreme|kusur|uplaćeno|uplaceno|zaokru|popust|stopa|oznaka|artikli|naziv|cena\b|količina|kolicina|iznos|www|@|\.rs\b|\.com\b/i,
+  LABOR:/\b(rad|radovi|rada|radna\s*snaga|usluga|usluge|manuelni\s*rad|radni\s*sat|montaža|montaza)\b/i,
+  CATRULES:[
+    [/ulje|castrol|motul|mobil|shell\s*helix|elf|total|filter|svećic|svecic/i,'Ulje i filteri'],
+    [/kočn|kocn|pločic|plocic|disk|brake|doboš/i,'Kočnice'],
+    [/gum[ae]|pneumat|balans|felna|michelin|bridgestone|continental|sava\b|tigar/i,'Gume'],
+    [/klim|freon|polen/i,'Klima'],
+    [/akumulator|sijalic|alternator|anlaser|senzor|osigura[cč]/i,'Elektrika'],
+    [/kvačil|kvacil|menjač|menjac/i,'Menjač / kvačilo'],
+    [/zupčast|zupcast|kaiš|kais|motor|turbo|razvod/i,'Motor'],
+    [/tehni[cč]ki|registracij/i,'Registracija / tehnički'],
+    [/lim|farb|brisač|brisac|retrovizor|branik/i,'Karoserija']],
+  STATIONS:['NIS Petrol','Gazprom','OMV','MOL','Lukoil','EKO','Petrol','NIS','Shell','Euro Petrol','Knez Petrol','Direct Media'],
+  parse(text){
+    text=String(text||'').replace(/\r/g,'').replace(/[ \t]+/g,' ');
+    const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
+    const r={raw:text,date:SCAN.parseDate(text),cur:/\b(eur|€)\b|€/i.test(text)&&!/\brsd|din\b/i.test(text)?'EUR':'RSD',
+      shop:'',parts:[],labor:0,total:0,liters:0,station:'',route:'',tollType:'Putarina',kind:'servis',pricePerL:0};
+    /* ukupno */
+    let totals=[];
+    lines.forEach(l=>{if(/ukupn|za\s*uplat|za\s*pla[cć]|sveukupno|total|iznos\s*za|naplać|naplac/i.test(l)&&!/pdv|porez|osnovica|popust|ukupan\s*por/i.test(l)){
+      const a=SCAN.amounts(l);if(a.length)totals.push(a[a.length-1])}});
+    r.total=totals.length?Math.max(...totals):0;
+    /* rad */
+    lines.forEach(l=>{if(SCAN.LABOR.test(l)&&!/ukupn/i.test(l)){const a=SCAN.amounts(l);if(a.length)r.labor+=a[a.length-1]}});
+    /* delovi */
+    lines.forEach(l=>{
+      if(SCAN.SKIP.test(l)||SCAN.LABOR.test(l))return;
+      const a=SCAN.amounts(l);if(!a.length)return;
+      const dateLess=l.replace(/\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}/g,'');
+      const nm=SCAN.clean(dateLess);
+      if((nm.match(/[A-Za-zČĆŠŽĐčćšžđ]/g)||[]).length<3)return;
+      r.parts.push(nm);
+    });
+    if(!r.total){const all=lines.filter(l=>!SCAN.SKIP.test(l)||/ukupn/i.test(l)).flatMap(SCAN.amounts);r.total=all.length?Math.max(...all):0}
+    /* prodavnica = prvi red sa slovima, bez ključnih reči */
+    r.shop=(lines.find(l=>/[A-Za-zČĆŠŽĐčćšžđ]{3,}/.test(l)&&!/^(\d|pib|ra[cč]un|fiskal)/i.test(l)&&!/ra[cč]un|prodaja|kopija|esir|pib|www|tel/i.test(l))||'').replace(/[^\p{L}\d .&\-]/gu,'').trim().slice(0,40);
+    /* vrsta */
+    const T=text;
+    const toll=/putarin|naplatn|vinjet|toll|enp|putevi\s*srbije|autoput|koridori|autoceste|hac\b|dars|asfinag|ulaz|izlaz/i.test(T);
+    const fuel=/dizel|diesel|benzin|eurodiz|bmb|eurosuper|\btng\b|\blpg\b|gorivo|\bbms\b|\d[.,]\d{1,3}\s*(l|lit|ltr)\b/i.test(T);
+    const serv=/servis|filter|ulje|castrol|kočn|kocn|pločic|plocic|\brad\b|\bradovi\b|\bguma\b|\bgume\b|delovi|montaž/i.test(T);
+    r.kind=toll&&!fuel&&!/filter|ulje/i.test(T)?'putovanje':(fuel&&!serv?'gorivo':(serv?'servis':(toll?'putovanje':(fuel?'gorivo':'servis'))));
+    if(/vinjet/i.test(T))r.tollType='Vinjeta';else if(/parking/i.test(T))r.tollType='Parking';
+    /* gorivo */
+    const lm=T.match(/(\d{1,3}[.,]\d{1,3})\s*(?:l|lit|ltr)\b/i);if(lm)r.liters=SCAN.parseAmt(lm[1]);
+    r.station=(SCAN.STATIONS.find(s=>new RegExp('\\b'+s.replace(/ /g,'\\s*')+'\\b','i').test(T))||'');
+    /* putarina: ulaz/izlaz */
+    const en=T.match(/ulaz[^\n:]*[:\s]\s*([^\n\d]{3,30})/i),ex=T.match(/izlaz[^\n:]*[:\s]\s*([^\n\d]{3,30})/i);
+    const cl=s=>s.replace(/[^\p{L} \-]/gu,'').replace(/\s+/g,' ').trim();
+    if(en&&ex)r.route=cl(en[1])+' — '+cl(ex[1]);
+    else{const ns=T.match(/(?:naplatna\s*stanica|n\.?s\.?)\s*[:\-]?\s*([^\n\d]{3,30})/i);if(ns)r.route=cl(ns[1])}
+    return r;
+  },
+  /* pretvara prepoznato u polja forme */
+  toRecord(r,kind){
+    const joinParts=r.parts.join(', ');
+    if(kind==='servis'){
+      const P=r.parts.join(' ');
+      let title='',cat='Ostalo';
+      for(const [re,c] of SCAN.CATRULES){if(re.test(P)){cat=c;break}}
+      if(/ulje|castrol|motul|mobil|elf/i.test(P)&&/filter/i.test(P))title='Mali servis';
+      else if(cat==='Kočnice')title='Kočnice';
+      else if(cat==='Gume')title='Gume';
+      else title=r.parts[0]||r.shop||'Servis';
+      return{date:r.date,cat,title,cost:r.total,mech:r.shop,
+        note:[r.parts.length?'Delovi: '+joinParts:'',r.labor?'Rad: '+SCAN.fmt(r.labor,r.cur):''].filter(Boolean).join('\n')};
+    }
+    if(kind==='gorivo')return{date:r.date,liters:r.liters||'',cost:r.total,station:r.station||r.shop,full:true};
+    return{date:r.date,route:r.route||r.tollType,type:r.tollType,amount:r.total,cur:r.cur,note:r.shop&&r.route?r.shop:''};
+  },
+  fmt(n,cur){return (Number(n)||0).toLocaleString('de-DE',{maximumFractionDigits:2})+' '+(cur||'RSD')},
+  fmtDate(iso){if(!iso)return '—';const p=iso.split('-');return p[2]+'.'+p[1]+'.'+p[0]}
+};
+/* ---------- SKENIRANJE RAČUNA: UI + OCR ---------- */
+(function(){
+const TESS_URL='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const KIND_TAB={servis:'servisi',gorivo:'gorivo',putovanje:'putovanja'};
+const KIND_LBL={servis:'🛠️ Servis',gorivo:'⛽ Gorivo',putovanje:'🛣️ Putarina'};
+let worker=null,parsed=null,kind='servis';
+
+document.body.insertAdjacentHTML('beforeend',
+ '<input type="file" id="scanFile" accept="image/*" hidden>'+
+ '<dialog id="scanDlg"><div class="dlg" id="scanBody"></div></dialog>');
+const style=document.createElement('style');
+style.textContent='.scrow{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)}.scrow b{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;padding-top:2px}.scrow span{text-align:right;word-break:break-word}.scbar{height:8px;border-radius:6px;background:var(--card2);overflow:hidden;margin:14px 0 6px}.scbar i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}.scparts{display:block;text-align:left}details.scraw{margin:10px 0;font-size:.8rem;color:var(--muted)}details.scraw pre{white-space:pre-wrap;max-height:160px;overflow:auto;background:var(--card2);padding:8px;border-radius:8px}';
+document.head.appendChild(style);
+
+/* dugme u gornjoj traci */
+const b=document.createElement('button');b.id='scanBtn';b.title='Skeniraj račun ili putarinu';b.textContent='📷';
+$('addVehBtn').insertAdjacentElement('afterend',b);
+b.onclick=()=>$('scanFile').click();
+
+/* dugme unutar formi za unos */
+const _of=openForm;
+openForm=function(type,id,pre){
+  _of(type,id,pre);
+  if(!id&&type!=='podsetnik'&&!(pre&&pre._scan)){
+    const h=$('dlgForm').querySelector('h3');
+    h.insertAdjacentHTML('afterend','<button type="button" class="btn-s" id="scanInForm" style="margin:-4px 0 12px">📷 Skeniraj račun</button>');
+    $('scanInForm').onclick=()=>{$('scanFile').click();$('dlg').close()};
+  }
+};
+
+$('scanFile').addEventListener('change',async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  show('<h3>📷 Skeniram račun…</h3><div id="scMsg" class="muted small">Priprema slike…</div><div class="scbar"><i id="scBar"></i></div>');
+  $('scanDlg').showModal();
+  try{
+    const cv=await prep(f);
+    await ensureWorker();
+    const {data}=await worker.recognize(cv);
+    parsed=SCAN.parse(data.text);kind=parsed.kind;
+    renderResult();
+  }catch(err){
+    show('<h3>Skeniranje nije uspelo</h3><p class="muted">'+esc(err&&err.message==='offline'
+      ?'Za prepoznavanje teksta potreban je internet (samo prvi put, posle se jezički paket pamti).'
+      :'Pokušaj sa oštrijom slikom, bez senki i savijenog papira.')+'</p><div class="row"><button type="button" class="grow" id="scClose">Zatvori</button><button type="button" class="btn-p grow" id="scRetry">📷 Probaj ponovo</button></div>');
+    $('scClose').onclick=()=>$('scanDlg').close();$('scRetry').onclick=()=>{$('scanDlg').close();$('scanFile').click()};
+  }
+});
+
+function show(html){$('scanBody').innerHTML=html}
+function prog(txt,p){const m=$('scMsg'),bar=$('scBar');if(m)m.textContent=txt;if(bar&&p!=null)bar.style.width=Math.round(p*100)+'%'}
+
+async function prep(file){
+  const bmp=await createImageBitmap(file);
+  let sc=Math.min(2400/Math.max(bmp.width,bmp.height),1);
+  if(bmp.width*sc<1100)sc=Math.min(1100/bmp.width,2.5);
+  const cv=document.createElement('canvas');cv.width=Math.round(bmp.width*sc);cv.height=Math.round(bmp.height*sc);
+  const ctx=cv.getContext('2d',{willReadFrequently:true});ctx.drawImage(bmp,0,0,cv.width,cv.height);
+  const im=ctx.getImageData(0,0,cv.width,cv.height),d=im.data,h=new Uint32Array(256);
+  for(let i=0;i<d.length;i+=4){const g=(d[i]*.299+d[i+1]*.587+d[i+2]*.114)|0;d[i]=g;h[g]++}
+  const tot=cv.width*cv.height;let lo=0,hi=255,a=0;
+  for(;lo<255&&a+h[lo]<tot*.02;lo++)a+=h[lo];a=0;for(;hi>0&&a+h[hi]<tot*.02;hi--)a+=h[hi];
+  const k=255/Math.max(hi-lo,30);
+  for(let i=0;i<d.length;i+=4){const v=Math.max(0,Math.min(255,((d[i]-lo)*k)|0));d[i]=d[i+1]=d[i+2]=v}
+  ctx.putImageData(im,0,0);return cv;
+}
+function loadLib(){return new Promise((res,rej)=>{if(window.Tesseract)return res();
+  const s=document.createElement('script');s.src=TESS_URL;s.onload=res;s.onerror=()=>rej(new Error('offline'));document.head.appendChild(s)})}
+async function ensureWorker(){
+  if(worker)return;
+  prog('Učitavam modul za prepoznavanje…',.05);await loadLib();
+  const logger=m=>{if(m.status==='recognizing text')prog('Čitam tekst… '+Math.round(m.progress*100)+'%',.3+m.progress*.7);else prog('Učitavam jezik…',.15)};
+  try{worker=await Tesseract.createWorker(['srp_latn','eng'],1,{logger})}
+  catch(e){worker=await Tesseract.createWorker('eng',1,{logger})}
+  try{await worker.setParameters({tessedit_pageseg_mode:'4',preserve_interword_spaces:'1'})}catch(e){}
+}
+
+function row(l,v){return'<div class="scrow"><b>'+l+'</b><span>'+v+'</span></div>'}
+function renderResult(){
+  const r=parsed,rec=SCAN.toRecord(r,kind),cur=r.cur;let rows='';
+  const money=n=>n?esc(SCAN.fmt(n,cur)):'—';
+  rows+=row('Datum',SCAN.fmtDate(rec.date||todayStr()));
+  if(kind==='servis'){
+    rows+=row('Servis',esc(rec.title||'—'))+row('Kategorija',esc(rec.cat));
+    rows+=row('Delovi',r.parts.length?'<span class="scparts">'+r.parts.map(p=>'• '+esc(p)).join('<br>')+'</span>':'—');
+    rows+=row('Rad',money(r.labor))+row('Ukupno','<b style="color:var(--txt);font-size:1rem">'+money(r.total)+'</b>');
+    if(r.shop)rows+=row('Servis / lokacija',esc(r.shop));
+  }else if(kind==='gorivo'){
+    rows+=row('Pumpa',esc(rec.station||'—'))+row('Litara',r.liters?esc(String(r.liters).replace('.',',')+' L'):'—')+row('Ukupno',money(r.total));
+  }else{
+    rows+=row('Relacija',esc(rec.route))+row('Vrsta',esc(rec.type))+row('Iznos',money(r.total));
+  }
+  const needKm=kind==='gorivo';
+  show('<h3>📷 Prepoznato:</h3>'+
+    '<div class="seg" style="margin-bottom:10px">'+Object.keys(KIND_LBL).map(k=>'<button type="button" data-sk="'+k+'" class="'+(k===kind?'on':'')+'">'+KIND_LBL[k]+'</button>').join('')+'</div>'+
+    rows+
+    '<details class="scraw"><summary>Prepoznati tekst sa slike</summary><pre>'+esc(r.raw)+'</pre></details>'+
+    (needKm?'<p class="muted small">Za gorivo je potrebna kilometraža – unosiš je u sledećem koraku.</p>':'')+
+    '<div style="font-weight:700;margin:10px 0">'+(needKm?'Nastaviti?':'Sačuvaj?')+'</div>'+
+    '<div class="row"><button type="button" class="grow" id="scCancel">Otkaži</button><button type="button" class="grow" id="scEdit">✏️ Izmeni</button><button type="button" class="btn-p grow" id="scSave">'+(needKm?'Dalje':'💾 Sačuvaj')+'</button></div>');
+  $('scanBody').querySelectorAll('[data-sk]').forEach(x=>x.onclick=()=>{kind=x.dataset.sk;renderResult()});
+  $('scCancel').onclick=()=>$('scanDlg').close();
+  $('scEdit').onclick=()=>toForm();
+  $('scSave').onclick=()=>needKm?toForm():saveNow();
+}
+function toForm(){
+  const rec=SCAN.toRecord(parsed,kind);rec._scan=1;if(!rec.date)rec.date=todayStr();
+  $('scanDlg').close();openForm(kind,null,rec);
+}
+function saveNow(){
+  const v=V(),rec=SCAN.toRecord(parsed,kind);if(!rec.date)rec.date=todayStr();
+  if(kind==='servis'){rec.km=maxKm(v)||'';v.records.push(Object.assign({id:uid()},rec))}
+  else if(kind==='putovanje')v.trips.push(Object.assign({id:uid()},rec));
+  save();$('scanDlg').close();go(KIND_TAB[kind]);toast('Sačuvano ✔');
+}
+})();
+</script>
 </body>
 </html>
