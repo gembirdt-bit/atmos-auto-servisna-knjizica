@@ -106,3 +106,10 @@ Atmos Auto Servisna Knjižica funkcioniše i bez internet konekcije zahvaljujuć
 ├── sw.js
 ├── icon.png
 └── README.md
+
+Autor
+Gemb-Bit Željko Ilić
+
+GitHub: https://github.com/gembirdt-bit
+Repozitorijum: https://github.com/gembirdt-bit/atmos-auto-servisna-knjizica
+Live Demo: https://gembirdt-bit.github.io/atmos-auto-servisna-knjizica
