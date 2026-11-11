@@ -86,7 +86,18 @@ footer{text-align:center;color:var(--muted);font-size:.75rem;padding:16px}
  body{background:#fff;color:#000;padding:0}.card,.item,.stat{background:#fff;color:#000;border-color:#bbb}.muted{color:#444}
  :root{--txt:#000;--muted:#444;--card:#fff;--card2:#eee}
 }
-</style>
+
+.itm{border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px;background:var(--card2)}
+.itm .fld{padding:8px 10px;font-size:.92rem;background:var(--card)}
+.itl{margin-top:6px}.itl summary{cursor:pointer;color:var(--muted);font-size:.8rem}.itl div{font-size:.8rem;padding:3px 0;border-bottom:1px solid var(--line)}
+.coffee-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:9999;padding:16px}.coffee-ov.open{display:flex}
+.coffee-box{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:18px;max-width:380px;width:100%;max-height:92vh;overflow:auto;padding:22px;text-align:center;font-size:.92rem;line-height:1.5;position:relative}
+.coffee-box h3{margin:0 0 10px;font-size:1.1rem;display:block}.coffee-box p{margin:8px 0}
+.coffee-acc{display:inline-block;margin:6px 0;padding:6px 12px;border-radius:10px;background:var(--card2);font-variant-numeric:tabular-nums;letter-spacing:.5px;user-select:all}
+.coffee-qr{width:200px;height:200px;margin:12px auto 4px;background:#fff;border-radius:10px;padding:6px}.coffee-qr svg{width:100%;height:100%;display:block}
+.coffee-x{position:absolute;top:6px;right:10px;width:auto;background:none;border:0;color:var(--txt);font-size:1.6rem;cursor:pointer;line-height:1;padding:4px 8px}
+.coffee-amts{display:flex;gap:6px;justify-content:center;margin-top:12px}.coffee-amts button{width:auto;padding:6px 12px;border-radius:10px;border:1px solid rgba(128,128,128,.45);background:rgba(128,128,128,.15);color:inherit;font:inherit;font-size:.85em;cursor:pointer}.coffee-amts button.on{background:#1686b8;border-color:#1686b8;color:#fff}.coffee-qrv svg{width:100%;height:100%;display:block}.coffee-qrv[hidden]{display:none}
+.coffee-mini{display:inline-block;width:auto;margin-top:8px;padding:5px 12px;font-size:.75rem;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--txt);cursor:pointer}</style>
 </head>
 <body>
 
@@ -97,7 +108,7 @@ footer{text-align:center;color:var(--muted);font-size:.75rem;padding:16px}
 </div></div>
 
 <main class="shell" id="view"></main>
-<footer>zeljkoracunariborca</footer>
+<footer>zeljkoracunariborca<br><button class="coffee-mini" onclick="coffeeOpen()" type="button">☕ Doniraj autoru</button></footer>
 
 <button class="fab" id="fab" aria-label="Dodaj">+</button>
 
@@ -219,7 +230,7 @@ function restoreSnap(i){
   save();go('pregled');toast('Podaci vraćeni ✔');
 }
 /* ---------- AŽURIRANJE APLIKACIJE ---------- */
-const APP_VERSION='2.9';
+const APP_VERSION='3.0';
 const PRE='atmosAuto2_preupdate';
 const countAll=d=>d.vehicles.reduce((s,v)=>s+v.records.length+v.fuels.length+v.trips.length+(v.reminders||[]).length,0)+d.vehicles.length;
 async function fetchRemoteVersion(){
@@ -346,20 +357,29 @@ const money=(n,cur)=>Math.round(n).toLocaleString('sr-RS')+' '+(cur||S().cur);
 const toBase=(a,c)=>c==='EUR'?a*S().eurRate:a;
 const kmFmt=n=>Math.round(n).toLocaleString('sr-RS')+' km';
 const maxKm=v=>Math.max(0,...v.records.map(r=>num(r.km)),...v.fuels.map(f=>num(f.km)));
-function consFmt(l100){if(!l100)return'—';return S().unit==='l100'?l100.toFixed(1)+' L/100km':(100/l100).toFixed(1)+' km/L'}
-function fuelCalc(v,fl){
-  const src=fl||v.fuels;
+function consFmt(l100,u){u=u||'L';if(!l100)return'—';return S().unit==='l100'?l100.toFixed(1)+' '+u+'/100km':(100/l100).toFixed(1)+' km/'+u}
+const fuelKey=(f,v)=>(f.ftype||(/dizel/i.test(v.fuelType)?'Dizel':'Benzin'))+'|'+(f.unit||'L');
+function fuelGroup(src,per){
   const f=[...src].sort((a,b)=>num(a.km)-num(b.km)||String(a.date).localeCompare(b.date));
-  const per={};let last=null,acc=0,tl=0,td=0;
+  let last=null,acc=0,tl=0,td=0;
   f.forEach(x=>{const km=num(x.km),l=num(x.liters);
     if(last===null){if(x.full!==false){last=km;acc=0}return}
     acc+=l;
     if(x.full!==false){const d=km-last;if(d>0){per[x.id]=acc/d*100;tl+=acc;td+=d}last=km;acc=0}
   });
+  const tL=src.reduce((s,x)=>s+num(x.liters),0),tC=src.reduce((s,x)=>s+num(x.cost),0);
+  return{avg:td?tl/td*100:0,ppl:tL?tC/tL:0,n:src.length};
+}
+function fuelCalc(v,fl){
+  const src=fl||v.fuels,groups={},per={};
+  src.forEach(x=>{(groups[fuelKey(x,v)]=groups[fuelKey(x,v)]||[]).push(x)});
+  let best=null,bk='Dizel|L';
+  Object.keys(groups).forEach(k=>{const g=fuelGroup(groups[k],per);if(!best||g.n>best.n){best=g;bk=k}});
+  best=best||{avg:0,ppl:0};
+  const f=[...src].sort((a,b)=>num(a.km)-num(b.km)||String(a.date).localeCompare(b.date));
   let cpk=0;
   if(f.length>1){const d=num(f[f.length-1].km)-num(f[0].km);const c=f.slice(1).reduce((s,x)=>s+num(x.cost),0);if(d>0)cpk=c/d}
-  const tL=src.reduce((s,x)=>s+num(x.liters),0),tC=src.reduce((s,x)=>s+num(x.cost),0);
-  return{per,avg:td?tl/td*100:0,cpk,ppl:tL?tC/tL:0,totalCost:tC}
+  return{per,avg:best.avg,cpk,ppl:best.ppl,unit:bk.split('|')[1],totalCost:src.reduce((s,x)=>s+num(x.cost),0)}
 }
 const totals=v=>({
   service:v.records.reduce((s,r)=>s+num(r.cost),0),
@@ -473,7 +493,7 @@ function pgPregled(){
   // aktivnost
   const act=[
     ...v.records.map(r=>({date:r.date,ic:CAT_IC[r.cat]||'🔧',t:r.title,s:r.km?kmFmt(num(r.km)):'',a:money(num(r.cost))})),
-    ...v.fuels.map(r=>({date:r.date,ic:'⛽',t:`Gorivo ${num(r.liters)} L`,s:kmFmt(num(r.km)),a:money(num(r.cost))})),
+    ...v.fuels.map(r=>({date:r.date,ic:'⛽',t:`Gorivo ${r.ftype?r.ftype+' ':''}${num(r.liters)} ${r.unit||'L'}`,s:kmFmt(num(r.km)),a:money(num(r.cost))})),
     ...v.trips.map(r=>({date:r.date,ic:'🗺️',t:r.route,s:r.type,a:money(num(r.amount),r.cur)}))
   ].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,5);
   return`
@@ -494,7 +514,7 @@ function pgPregled(){
   ${periodBar(true)}
   ${S().period==='plan'?planCard(v):`<div class="grid g4" style="margin-bottom:12px">
     <div class="stat"><small>Ukupni troškovi</small><b>${money(total)}</b></div>
-    <div class="stat"><small>Prosečna potrošnja</small><b>${consFmt(fc.avg)}</b></div>
+    <div class="stat"><small>Prosečna potrošnja</small><b>${consFmt(fc.avg,fc.unit)}</b></div>
     <div class="stat"><small>Trošak goriva / km</small><b>${fc.cpk?fc.cpk.toFixed(1)+' '+S().cur:'—'}</b></div>
     <div class="stat"><small>Prosečna cena litra</small><b>${fc.ppl?fc.ppl.toFixed(1)+' '+S().cur:'—'}</b></div>
   </div>
@@ -518,7 +538,7 @@ function pgServisi(){
   let list=[...filt(v).records].sort((a,b)=>String(b.date).localeCompare(String(a.date))||num(b.km)-num(a.km));
   const q=ui.q.toLowerCase();
   if(ui.cat)list=list.filter(r=>r.cat===ui.cat);
-  if(q)list=list.filter(r=>[r.title,r.mech,r.note,r.cat].join(' ').toLowerCase().includes(q));
+  if(q)list=list.filter(r=>[r.title,r.mech,r.note,r.cat,...(r.items||[]).map(i=>i.name+' '+(i.cat||''))].join(' ').toLowerCase().includes(q));
   const sum=list.reduce((s,r)=>s+num(r.cost),0);
   return`
   ${periodBar(false)}
@@ -531,6 +551,7 @@ function pgServisi(){
     <div class="grow"><div class="t">${esc(r.title)}</div>
     <div class="small muted">${fmtDate(r.date)}${r.km?' · '+kmFmt(num(r.km)):''}${r.cat?' · '+esc(r.cat):''}</div>
     ${r.mech||r.note?`<div class="small muted" style="margin-top:4px">${esc(r.mech)}${r.mech&&r.note?' — ':''}${esc(r.note)}</div>`:''}
+    ${(r.items||[]).length?`<details class="itl"><summary>Stavke (${r.items.length})</summary>${r.items.map(i=>`<div>${i.k==='rad'?'🔧':i.k==='usluga'?'🧰':'📦'} ${esc(i.name)}${i.cat?` <span class="muted">· ${esc(i.cat)}</span>`:''}<br><span class="muted">${String(i.qty).replace('.',',')}${i.k==='rad'?' h':''} × ${money(num(i.price))} = <b>${money(num(i.total))}</b></span></div>`).join('')}</details>`:''}
     <div class="acts"><button class="btn-s" data-act="edit" data-t="servis" data-id="${r.id}">✏️ Izmeni</button><button class="btn-s btn-d" data-act="del" data-t="servis" data-id="${r.id}">🗑️</button></div></div>
     <div class="amt">${money(num(r.cost))}</div></div>`).join(''):'<div class="empty">Nema servisa. Pritisni + da dodaš.</div>'}`;
 }
@@ -541,14 +562,14 @@ function pgGorivo(){
   return`
   ${periodBar(false)}
   <div class="grid g3" style="margin-bottom:12px">
-    <div class="stat"><small>Prosek</small><b>${consFmt(fc.avg)}</b></div>
+    <div class="stat"><small>Prosek</small><b>${consFmt(fc.avg,fc.unit)}</b></div>
     <div class="stat"><small>Cena litra (prosek)</small><b>${fc.ppl?fc.ppl.toFixed(1)+' '+S().cur:'—'}</b></div>
     <div class="stat"><small>Ukupno za gorivo</small><b>${money(fc.totalCost)}</b></div>
   </div>
   ${list.length?list.map(f=>{const c=fc.per[f.id];return`<div class="item"><div class="ic">⛽</div>
-    <div class="grow"><div class="t">${num(f.liters)} L${f.full===false?' <span class="badge b-n">delimično</span>':''}</div>
+    <div class="grow"><div class="t">${f.ftype?esc(f.ftype)+' · ':''}${num(f.liters)} ${f.unit||'L'}${f.full===false?' <span class="badge b-n">delimično</span>':''}</div>
     <div class="small muted">${fmtDate(f.date)} · ${kmFmt(num(f.km))}${f.station?' · '+esc(f.station):''}</div>
-    <div class="small" style="margin-top:4px">${c?`Potrošnja: <b>${consFmt(c)}</b>`:'<span class="muted">Potrošnja se računa od sledećeg punog rezervoara</span>'}${num(f.liters)?` · ${(num(f.cost)/num(f.liters)).toFixed(1)} ${S().cur}/L`:''}</div>
+    <div class="small" style="margin-top:4px">${c?`Potrošnja: <b>${consFmt(c,f.unit)}</b>`:'<span class="muted">Potrošnja se računa od sledećeg punog rezervoara</span>'}${num(f.liters)?` · ${(num(f.cost)/num(f.liters)).toFixed(1)} ${S().cur}/${f.unit||'L'}`:''}</div>
     <div class="acts"><button class="btn-s" data-act="edit" data-t="gorivo" data-id="${f.id}">✏️ Izmeni</button><button class="btn-s btn-d" data-act="del" data-t="gorivo" data-id="${f.id}">🗑️</button></div></div>
     <div class="amt">${money(num(f.cost))}</div></div>`}).join(''):'<div class="empty">Nema sipanja. Pritisni + da dodaš.<br><span class="small">Savet: sipaj do pun rezervoar za tačan prosek.</span></div>'}`;
 }
@@ -565,7 +586,7 @@ function pgPutovanja(){
   </div>
   ${list.length?list.map(t=>`<div class="item"><div class="ic">🗺️</div>
     <div class="grow"><div class="t">${esc(t.route)}</div>
-    <div class="small muted">${fmtDate(t.date)} · ${esc(t.type)}</div>
+    <div class="small muted">${fmtDate(t.date)}${t.time?' u '+esc(t.time):''} · ${esc(t.type)}</div>
     ${t.note?`<div class="small muted">${esc(t.note)}</div>`:''}
     <div class="acts"><button class="btn-s" data-act="edit" data-t="putovanje" data-id="${t.id}">✏️ Izmeni</button><button class="btn-s btn-d" data-act="del" data-t="putovanje" data-id="${t.id}">🗑️</button></div></div>
     <div class="amt">${money(num(t.amount),t.cur)}</div></div>`).join(''):'<div class="empty">Nema putnih troškova (putarine, vinjete, parking...). Pritisni +.</div>'}`;
@@ -666,6 +687,10 @@ function pgPodesavanja(){
     </div>
     <div class="small muted" style="margin-bottom:10px">Podaci se čuvaju samo na ovom uređaju. Redovno napravi rezervnu kopiju (izvoz) i sačuvaj je na sigurno mesto.</div>
     <button class="btn-d" data-act="reset" style="width:100%">⚠️ Obriši sve podatke</button>
+  </div>
+  <div class="card"><h3>☕ Podrži autora</h3>
+    <div class="small muted" style="margin-bottom:10px">Ako ti se aplikacija sviđa, možeš da častiš autora kafom.</div>
+    <button class="btn-p" style="width:100%" onclick="coffeeOpen()" type="button">☕ Plati mi kafu</button>
   </div>`;
 }
 
@@ -678,21 +703,67 @@ function pgVise(){
 }
 
 /* ---------- FORME ---------- */
+const FUELS=['Dizel','Benzin','LPG','TNG'];
+const defFuel=()=>{const t=(V().fuelType||'');return /dizel/i.test(t)?'Dizel':/lpg/i.test(t)?'LPG':'Benzin'};
+const ITYPES=[['deo','Deo'],['rad','Rad (sati)'],['usluga','Usluga']];
+function itemRow(it){it=it||{};const k=it.k||'deo';
+  return`<div class="itm"><div class="row" style="gap:6px"><select class="fld i-k" style="width:auto">${ITYPES.map(([v,l])=>`<option value="${v}" ${v===k?'selected':''}>${l}</option>`).join('')}</select><input class="fld i-n grow" placeholder="Naziv dela / posla" value="${esc(it.name||'')}"><button type="button" class="btn-s btn-d i-x" title="Ukloni">✕</button></div>
+  <div class="row" style="gap:6px;margin-top:6px"><input class="fld i-c grow" list="catList" placeholder="Kategorija" value="${esc(it.cat||'')}"><input class="fld i-q" inputmode="decimal" placeholder="${k==='rad'?'Sati':'Kol'}" value="${it.qty??''}" style="width:68px"><input class="fld i-p" inputmode="decimal" placeholder="${k==='rad'?'Cena/sat':'Cena'}" value="${it.price??''}" style="width:96px"></div>
+  <div class="small muted i-s" style="text-align:right;margin-top:4px"></div></div>`}
+function itemsHtml(items){
+  return`<div style="grid-column:1/-1"><label class="l">Stavke — delovi i radovi</label><datalist id="catList">${CATS.map(c=>`<option value="${c}">`).join('')}</datalist>
+  <div id="itmBox">${(items||[]).map(itemRow).join('')}</div>
+  <div class="row wrap" style="gap:6px;margin-top:4px"><button type="button" class="btn-s" data-addi="deo">＋ Deo</button><button type="button" class="btn-s" data-addi="rad">＋ Rad (sati)</button><button type="button" class="btn-s" data-addi="usluga">＋ Usluga</button></div>
+  <div class="small muted" id="itmSum" style="margin-top:6px"></div></div>`}
+function readItems(){
+  return[...document.querySelectorAll('#itmBox .itm')].map(r=>{
+    const k=r.querySelector('.i-k').value,q=num(r.querySelector('.i-q').value)||1,p=num(r.querySelector('.i-p').value);
+    return{k,name:r.querySelector('.i-n').value.trim(),cat:r.querySelector('.i-c').value.trim(),qty:q,price:p,total:Math.round(q*p*100)/100,unit:k==='rad'?'h':k==='usluga'?'usl':'kom'}
+  }).filter(i=>i.name||i.price);
+}
+function formHooks(type,pre){
+  const f=$('dlgForm'),el=n=>f.elements[n],r2=x=>Math.round(x*100)/100;
+  if(type==='servis'){
+    const box=$('itmBox');let manual=false;
+    const upd=(setCost)=>{let sum=0;box.querySelectorAll('.itm').forEach(row=>{
+      const k=row.querySelector('.i-k').value,q=num(row.querySelector('.i-q').value)||1,p=num(row.querySelector('.i-p').value);
+      row.querySelector('.i-q').placeholder=k==='rad'?'Sati':'Kol';row.querySelector('.i-p').placeholder=k==='rad'?'Cena/sat':'Cena';
+      const t=r2(q*p);sum+=t;row.querySelector('.i-s').textContent=p?`${String(q).replace('.',',')}${k==='rad'?' h':''} × ${money(p)} = ${money(t)}`:''});
+      $('itmSum').textContent=box.children.length?'Zbir stavki: '+money(sum):'';
+      if(setCost&&!manual&&box.children.length)el('cost').value=r2(sum)};
+    el('cost').addEventListener('input',()=>{manual=true});
+    box.addEventListener('input',()=>upd(true));box.addEventListener('change',()=>upd(true));
+    f.addEventListener('click',e=>{
+      const x=e.target.closest('.i-x');if(x){x.closest('.itm').remove();upd(true);return}
+      const a=e.target.closest('[data-addi]');if(a){box.insertAdjacentHTML('beforeend',itemRow({k:a.dataset.addi}));box.lastElementChild.querySelector('.i-n').focus();upd(false)}});
+    upd(false);
+  }
+  if(type==='gorivo'){
+    const q=el('liters'),p=el('price'),c=el('cost');
+    const fromQP=()=>{const a=num(q.value),b=num(p.value);if(a>0&&b>0)c.value=r2(a*b)};
+    q.addEventListener('input',fromQP);p.addEventListener('input',fromQP);
+    c.addEventListener('input',()=>{const a=num(q.value),t=num(c.value);if(a>0&&t>0)p.value=r2(t/a)});
+  }
+  if(!editing.id&&type!=='podsetnik'&&!(pre&&pre._scan)&&window.ScanUI)window.ScanUI.attach(type,editing);
+}
 const FORMS={
   servis:{title:'Servis',list:'records',f:[
     {k:'date',l:'Datum',t:'date',d:todayStr,h:1},{k:'km',l:'Kilometraža',t:'number',h:1,d:()=>maxKm(V())||''},
     {k:'cat',l:'Kategorija',t:'select',o:CATS,d:()=>'Ulje i filteri'},
     {k:'title',l:'Intervencija / deo',t:'text',req:1,ph:'Mali servis (ulje i filteri)'},
-    {k:'cost',l:'Cena ('+'RSD)',t:'number',h:1,d:()=>''},{k:'mech',l:'Majstor / lokacija',t:'text',h:1},
-    {k:'note',l:'Beleške i delovi',t:'textarea',ph:'Kataloški brojevi...'}]},
+    {k:'cost',l:'Ukupna cena ('+'RSD)',t:'number',h:1,d:()=>'',step:'0.01'},{k:'mech',l:'Majstor / lokacija',t:'text',h:1},
+    {k:'items',t:'items'},
+    {k:'note',l:'Beleške',t:'textarea',ph:'Dodatne beleške...'}]},
   gorivo:{title:'Sipanje goriva',list:'fuels',f:[
     {k:'date',l:'Datum',t:'date',d:todayStr,h:1},{k:'km',l:'Kilometraža',t:'number',req:1,h:1,d:()=>maxKm(V())||''},
-    {k:'liters',l:'Litara',t:'number',req:1,h:1,step:'0.01'},{k:'cost',l:'Ukupno cena',t:'number',h:1},
-    {k:'station',l:'Pumpa (opciono)',t:'text'},
+    {k:'ftype',l:'Vrsta goriva',t:'select',o:FUELS,d:defFuel,h:1},{k:'unit',l:'Jedinica',t:'select',o:['L','kg'],d:()=>'L',h:1},
+    {k:'liters',l:'Količina (L / kg)',t:'number',req:1,h:1,step:'0.01'},{k:'price',l:'Cena po jedinici',t:'number',h:1,step:'0.01'},
+    {k:'cost',l:'Ukupno cena',t:'number',h:1,step:'0.01'},{k:'station',l:'Pumpa (opciono)',t:'text',h:1},
     {k:'full',l:'Napunjen pun rezervoar',t:'check',d:()=>true}]},
   putovanje:{title:'Putni trošak',list:'trips',f:[
-    {k:'date',l:'Datum',t:'date',d:todayStr,h:1},{k:'route',l:'Relacija / opis',t:'text',req:1,h:1,ph:'Beograd — Koper'},
-    {k:'type',l:'Vrsta troška',t:'select',o:['Putarina','Vinjeta','Parking','Kazna','Pranje','Smeštaj','Ostalo'],d:()=>'Putarina',h:1},
+    {k:'date',l:'Datum',t:'date',d:todayStr,h:1},{k:'time',l:'Vreme',t:'time',h:1},
+    {k:'route',l:'Mesto prolaza / relacija',t:'text',req:1,ph:'Kovilj — Novi Sad jug'},
+    {k:'type',l:'Vrsta troška',t:'select',o:['Putarina','Vinjeta','Parking','Kazna','Pranje','Smeštaj','Ostalo'],d:()=>'Putarina'},
     {k:'amount',l:'Iznos',t:'number',h:1,step:'0.01'},{k:'cur',l:'Valuta',t:'select',o:['RSD','EUR'],d:()=>S().cur,h:1},
     {k:'note',l:'Beleška',t:'text'}]},
   podsetnik:{title:'Podsetnik',list:'reminders',f:[
@@ -710,6 +781,7 @@ function openForm(type,id,pre){
     if(val==null)val='';
     let el;
     if(x.t==='select')el=`<select class="fld" name="${x.k}">${x.o.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select>`;
+    else if(x.t==='items')return itemsHtml(val);
     else if(x.t==='textarea')el=`<textarea class="fld" name="${x.k}" rows="2" placeholder="${esc(x.ph||'')}">${esc(val)}</textarea>`;
     else if(x.t==='check')return`<label class="row" style="margin:8px 0;grid-column:1/-1"><input type="checkbox" name="${x.k}" ${val!==false?'checked':''} style="width:20px;height:20px"> ${x.l}</label>`;
     else el=`<input class="fld" name="${x.k}" type="${x.t}" ${x.t==='number'?`inputmode="decimal" step="${x.step||'any'}"`:''} value="${esc(val)}" placeholder="${esc(x.ph||'')}" ${x.req?'required':''}>`;
@@ -719,11 +791,13 @@ function openForm(type,id,pre){
    <div class="grid g2" style="gap:10px">${F.f.map(fld).join('')}</div>
    <div class="row" style="margin-top:14px"><button type="button" class="grow" id="dlgCancel">Otkaži</button><button type="submit" class="btn-p grow">💾 Sačuvaj</button></div>`;
   $('dlg').showModal();
+  formHooks(type,pre);
 }
 $('dlgForm').addEventListener('submit',e=>{
   e.preventDefault();
   const {type,id,rem}=editing,F=FORMS[type],v=V(),fd=new FormData($('dlgForm')),o={};
   F.f.forEach(x=>{
+    if(x.t==='items'){o[x.k]=readItems();return}
     if(x.t==='check')o[x.k]=$('dlgForm').elements[x.k].checked;
     else{const val=fd.get(x.k);o[x.k]=(x.t==='number'&&val!=='')?num(val):(val||'')}
   });
@@ -743,10 +817,10 @@ function download(name,text,mime){
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 function exportCsv(){
-  const v=V(),rows=[['Tip','Datum','Km','Opis','Kategorija / Vrsta','Litara','Iznos','Valuta','Beleška']];
-  v.records.forEach(r=>rows.push(['Servis',r.date,r.km,r.title,r.cat,'',r.cost,S().cur,[r.mech,r.note].filter(Boolean).join(' — ')]));
-  v.fuels.forEach(r=>rows.push(['Gorivo',r.date,r.km,r.station||'Gorivo','',r.liters,r.cost,S().cur,r.full===false?'delimično':'']));
-  v.trips.forEach(r=>rows.push(['Putovanje',r.date,'',r.route,r.type,'',r.amount,r.cur,r.note]));
+  const v=V(),rows=[['Tip','Datum','Km','Opis','Kategorija / Vrsta','Količina (L/kg)','Iznos','Valuta','Beleška']];
+  v.records.forEach(r=>rows.push(['Servis',r.date,r.km,r.title,r.cat,'',r.cost,S().cur,[r.mech,r.note,(r.items||[]).length?'Stavke: '+r.items.map(i=>i.name+' ('+i.qty+(i.k==='rad'?'h':'')+' x '+i.price+')').join('; '):''].filter(Boolean).join(' — ')]));
+  v.fuels.forEach(r=>rows.push(['Gorivo',r.date,r.km,r.station||'Gorivo',[r.ftype,r.unit].filter(Boolean).join(' '),r.liters,r.cost,S().cur,[r.price?'cena '+r.price:'',r.full===false?'delimično':''].filter(Boolean).join(', ')]));
+  v.trips.forEach(r=>rows.push(['Putovanje',r.date+(r.time?' '+r.time:''),'',r.route,r.type,'',r.amount,r.cur,r.note]));
   rows.sort((a,b)=>a===rows[0]?-1:b===rows[0]?1:String(b[1]).localeCompare(String(a[1])));
   const csv='\ufeff'+rows.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
   download(`atmos_auto_${v.plate||v.name}.csv`,csv,'text/csv');
@@ -852,145 +926,523 @@ syncAlertData();
 if(S().notif)regPeriodic();
 </script>
 <script id="scan-js">
-/* ---------- SKENIRANJE RAČUNA: prepoznavanje polja iz teksta ---------- */
-const SCAN={
-  AMT:/(\d{1,3}(?:[. ]\d{3})+,\d{1,2}|\d{1,3}(?:[. ]\d{3})+(?![\d,])|\d+[.,]\d{1,2}(?!\d)|\d{3,})/g,
-  parseAmt(s){
-    s=String(s).replace(/\s/g,'');
-    if(/,\d{1,2}$/.test(s))s=s.replace(/\./g,'').replace(',','.');
-    else if(/^\d{1,3}(\.\d{3})+$/.test(s)||/^\d{1,3}(,\d{3})+$/.test(s))s=s.replace(/[.,]/g,'');
-    else s=s.replace(',','.');
-    const n=parseFloat(s);return isNaN(n)?0:n;
-  },
-  amounts(line){return (line.match(SCAN.AMT)||[]).map(SCAN.parseAmt).filter(n=>n>0)},
-  parseDate(text){
-    const re=/(?:^|[^\d])(\d{1,2})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(20\d{2}|\d{2})(?!\d)/g;let m,best=null;
-    const lines=text.split('\n');
-    for(const ln of lines){re.lastIndex=0;
-      while((m=re.exec(ln))){let d=+m[1],mo=+m[2],y=+m[3];if(y<100)y+=2000;
-        if(d<1||d>31||mo<1||mo>12)continue;
-        const iso=y+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-        if(!best||/datum|vreme|date/i.test(ln))best=iso;
-        if(/datum|date/i.test(ln))return iso;}}
-    return best;
-  },
-  clean(name){
-    return name.replace(SCAN.AMT,' ').replace(/\b\d+\s*[x×*]\s*(?=\s|$)/gi,' ').replace(/(^|\s)[x×*](?=\s|$)/gi,' ')
-      .replace(/\b(kom|kos|pcs|din|rsd|eur|[ђĐđ]|a|b|g)\b\.?/gi,' ').replace(/^[\s\d.)\-–•*:]+/,'').replace(/[|_=:;]+/g,' ').replace(/\s+/g,' ').trim();
-  },
-  SKIP:/pdv|porez|osnovica|ukupn|za\s*uplat|za\s*pla|gotovin|kartic|povrat|ra[cč]un\b|pib|mb\b|datum|fiskal|esir|ptfr|brojač|brojac|kasir|operater|hvala|ref\.|pfr|prodavac|kupac|broj|tel\b|tel\.|adresa|sifra|šifra|vreme|kusur|uplaćeno|uplaceno|zaokru|popust|stopa|oznaka|artikli|naziv|cena\b|količina|kolicina|iznos|www|@|\.rs\b|\.com\b/i,
-  LABOR:/\b(rad|radovi|rada|radna\s*snaga|usluga|usluge|manuelni\s*rad|radni\s*sat|montaža|montaza)\b/i,
-  CATRULES:[
-    [/ulje|castrol|motul|mobil|shell\s*helix|elf|total|filter|svećic|svecic/i,'Ulje i filteri'],
-    [/kočn|kocn|pločic|plocic|disk|brake|doboš/i,'Kočnice'],
-    [/gum[ae]|pneumat|balans|felna|michelin|bridgestone|continental|sava\b|tigar/i,'Gume'],
-    [/klim|freon|polen/i,'Klima'],
-    [/akumulator|sijalic|alternator|anlaser|senzor|osigura[cč]/i,'Elektrika'],
-    [/kvačil|kvacil|menjač|menjac/i,'Menjač / kvačilo'],
-    [/zupčast|zupcast|kaiš|kais|motor|turbo|razvod/i,'Motor'],
-    [/tehni[cč]ki|registracij/i,'Registracija / tehnički'],
-    [/lim|farb|brisač|brisac|retrovizor|branik/i,'Karoserija']],
-  STATIONS:['NIS Petrol','Gazprom','OMV','MOL','Lukoil','EKO','Petrol','NIS','Shell','Euro Petrol','Knez Petrol','Direct Media'],
-  parse(text){
-    text=String(text||'').replace(/\r/g,'').replace(/[ \t]+/g,' ');
-    const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
-    const r={raw:text,date:SCAN.parseDate(text),cur:/\b(eur|€)\b|€/i.test(text)&&!/\brsd|din\b/i.test(text)?'EUR':'RSD',
-      shop:'',parts:[],labor:0,total:0,liters:0,station:'',route:'',tollType:'Putarina',kind:'servis',pricePerL:0};
-    /* ukupno */
-    let totals=[];
-    lines.forEach(l=>{if(/ukupn|za\s*uplat|za\s*pla[cć]|sveukupno|total|iznos\s*za|naplać|naplac/i.test(l)&&!/pdv|porez|osnovica|popust|ukupan\s*por/i.test(l)){
-      const a=SCAN.amounts(l);if(a.length)totals.push(a[a.length-1])}});
-    r.total=totals.length?Math.max(...totals):0;
-    /* rad */
-    lines.forEach(l=>{if(SCAN.LABOR.test(l)&&!/ukupn/i.test(l)){const a=SCAN.amounts(l);if(a.length)r.labor+=a[a.length-1]}});
-    /* delovi */
-    lines.forEach(l=>{
-      if(SCAN.SKIP.test(l)||SCAN.LABOR.test(l))return;
-      const a=SCAN.amounts(l);if(!a.length)return;
-      const dateLess=l.replace(/\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}/g,'');
-      const nm=SCAN.clean(dateLess);
-      if((nm.match(/[A-Za-zČĆŠŽĐčćšžđ]/g)||[]).length<3)return;
-      r.parts.push(nm);
-    });
-    if(!r.total){const all=lines.filter(l=>!SCAN.SKIP.test(l)||/ukupn/i.test(l)).flatMap(SCAN.amounts);r.total=all.length?Math.max(...all):0}
-    /* prodavnica = prvi red sa slovima, bez ključnih reči */
-    r.shop=(lines.find(l=>/[A-Za-zČĆŠŽĐčćšžđ]{3,}/.test(l)&&!/^(\d|pib|ra[cč]un|fiskal)/i.test(l)&&!/ra[cč]un|prodaja|kopija|esir|pib|www|tel/i.test(l))||'').replace(/[^\p{L}\d .&\-]/gu,'').trim().slice(0,40);
-    /* vrsta */
-    const T=text;
-    const toll=/putarin|naplatn|vinjet|toll|enp|putevi\s*srbije|autoput|koridori|autoceste|hac\b|dars|asfinag|ulaz|izlaz/i.test(T);
-    const fuel=/dizel|diesel|benzin|eurodiz|bmb|eurosuper|\btng\b|\blpg\b|gorivo|\bbms\b|\d[.,]\d{1,3}\s*(l|lit|ltr)\b/i.test(T);
-    const serv=/servis|filter|ulje|castrol|kočn|kocn|pločic|plocic|\brad\b|\bradovi\b|\bguma\b|\bgume\b|delovi|montaž/i.test(T);
-    r.kind=toll&&!fuel&&!/filter|ulje/i.test(T)?'putovanje':(fuel&&!serv?'gorivo':(serv?'servis':(toll?'putovanje':(fuel?'gorivo':'servis'))));
-    if(/vinjet/i.test(T))r.tollType='Vinjeta';else if(/parking/i.test(T))r.tollType='Parking';
-    /* gorivo */
-    const lm=T.match(/(\d{1,3}[.,]\d{1,3})\s*(?:l|lit|ltr)\b/i);if(lm)r.liters=SCAN.parseAmt(lm[1]);
-    r.station=(SCAN.STATIONS.find(s=>new RegExp('\\b'+s.replace(/ /g,'\\s*')+'\\b','i').test(T))||'');
-    /* putarina: ulaz/izlaz */
-    const en=T.match(/ulaz[^\n:]*[:\s]\s*([^\n\d]{3,30})/i),ex=T.match(/izlaz[^\n:]*[:\s]\s*([^\n\d]{3,30})/i);
-    const cl=s=>s.replace(/[^\p{L} \-]/gu,'').replace(/\s+/g,' ').trim();
-    if(en&&ex)r.route=cl(en[1])+' — '+cl(ex[1]);
-    else{const ns=T.match(/(?:naplatna\s*stanica|n\.?s\.?)\s*[:\-]?\s*([^\n\d]{3,30})/i);if(ns)r.route=cl(ns[1])}
-    return r;
-  },
-  /* pretvara prepoznato u polja forme */
-  toRecord(r,kind){
-    const joinParts=r.parts.join(', ');
-    if(kind==='servis'){
-      const P=r.parts.join(' ');
-      let title='',cat='Ostalo';
-      for(const [re,c] of SCAN.CATRULES){if(re.test(P)){cat=c;break}}
-      if(/ulje|castrol|motul|mobil|elf/i.test(P)&&/filter/i.test(P))title='Mali servis';
-      else if(cat==='Kočnice')title='Kočnice';
-      else if(cat==='Gume')title='Gume';
-      else title=r.parts[0]||r.shop||'Servis';
-      return{date:r.date,cat,title,cost:r.total,mech:r.shop,
-        note:[r.parts.length?'Delovi: '+joinParts:'',r.labor?'Rad: '+SCAN.fmt(r.labor,r.cur):''].filter(Boolean).join('\n')};
+/* ---------- SKENIRANJE RAČUNA: prepoznavanje polja iz teksta (bez DOM-a) ---------- */
+const SCAN=(()=>{
+const CYR={А:'A',Б:'B',В:'V',Г:'G',Д:'D',Ђ:'Đ',Е:'E',Ж:'Ž',З:'Z',И:'I',Ј:'J',К:'K',Л:'L',Љ:'Lj',М:'M',Н:'N',Њ:'Nj',О:'O',П:'P',Р:'R',С:'S',Т:'T',Ћ:'Ć',У:'U',Ф:'F',Х:'H',Ц:'C',Ч:'Č',Џ:'Dž',Ш:'Š',
+  а:'a',б:'b',в:'v',г:'g',д:'d',ђ:'đ',е:'e',ж:'ž',з:'z',и:'i',ј:'j',к:'k',л:'l',љ:'lj',м:'m',н:'n',њ:'nj',о:'o',п:'p',р:'r',с:'s',т:'t',ћ:'ć',у:'u',ф:'f',х:'h',ц:'c',ч:'č',џ:'dž',ш:'š'};
+const translit=s=>s.replace(/[\u0400-\u04FF]/g,c=>CYR[c]!==undefined?CYR[c]:c);
+const fold=s=>s.toLowerCase().replace(/[čćç¢]/g,'c').replace(/[šś]/g,'s').replace(/[žź]/g,'z').replace(/đ/g,'d');
+const r2=n=>Math.round(n*100)/100;
+const tc=s=>String(s||'').toLowerCase().replace(/(^|[\s\-\/(])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase()).replace(/\s+/g,' ').trim();
+
+/* ---------- brojevi ---------- */
+const MRE=/(^|[^\d.,])(\d{1,3}(?:[.,]\d{3})+[.,]\d{2}|\d+[.,]\d{2})(?!\d|[.,]\d)/g;
+function stripDT(s){return s.replace(/\d{1,4}[.\/-]\d{1,2}[.\/-]\d{1,4}/g,m=>' '.repeat(m.length)).replace(/\d{1,2}:\d{2}(?::\d{2})?/g,m=>' '.repeat(m.length))}
+function pm(s){
+  s=String(s);const m=s.match(/[.,](\d{2,3})$/);
+  if(m&&(m[1].length===2||!/^\d{1,3}([.,]\d{3})+$/.test(s))){const ip=s.slice(0,s.length-m[1].length-1).replace(/[.,]/g,'');return parseFloat(ip+'.'+m[1])}
+  const n=parseFloat(s.replace(/[.,]/g,''));return isNaN(n)?0:n;
+}
+/* svi novčani iznosi u redu (sa dve decimale); preskače datume, vreme i iznose pre znaka % */
+function monies(s){
+  const out=[];s=stripDT(s);let m;MRE.lastIndex=0;
+  while((m=MRE.exec(s))){
+    const i=m.index+m[1].length,end=i+m[2].length;
+    if(/^\s*%/.test(s.slice(end)))continue;
+    out.push({s:m[2],v:pm(m[2]),i});
+  }
+  return out;
+}
+/* ispravlja razmake oko decimalnih zareza i slova koja liče na cifre unutar brojeva */
+function fixNums(s){
+  s=s.replace(/(\d)\s+([.,])\s*(\d)/g,'$1$2$3').replace(/(\d)([.,])\s+(\d)/g,'$1$2$3');
+  return s.split(' ').map(t=>{
+    if(t.length>=4&&/\d/.test(t)&&/^[\d@OoQSBIl|.,]+$/.test(t)&&(t.match(/\d/g)||[]).length>=t.length*.5)
+      return t.replace(/[@OoQ]/g,'0').replace(/S/g,'5').replace(/B/g,'8').replace(/[Il|]/g,'1');
+    return t}).join(' ');
+}
+function cleanMoney(t){
+  t=String(t||'');
+  if(/^\d{1,3}([.,]\d{3})+[.,]\d{2}$/.test(t)||/^\d+[.,]\d{2,3}$/.test(t))return t;
+  const m=t.match(/^(\d{1,3}(?:[.,]\d{3})+[.,]\d{2})\d$/)||t.match(/^(\d+[.,]\d{2})\d$/);
+  return m?m[1]:null;
+}
+
+/* ---------- ispravka cifara koje OCR često meša (0/8/6, 3/9, 1/4/7 ...) ---------- */
+const ALT={0:'869',1:'47',2:'7',3:'985',4:'19',5:'63',6:'805',7:'12',8:'0639',9:'3804'};
+function vars(d,maxE){
+  const res=new Map([[d,0]]);
+  (function rec(pos,str,e){
+    for(let i=pos;i<d.length;i++){
+      for(const a of (ALT[d[i]]||'')){
+        const ns=str.slice(0,i)+a+str.slice(i+1),ne=e+1;
+        if(!res.has(ns)||res.get(ns)>ne)res.set(ns,ne);
+        if(ne<maxE)rec(i+1,ns,ne);
+      }
     }
-    if(kind==='gorivo')return{date:r.date,liters:r.liters||'',cost:r.total,station:r.station||r.shop,full:true};
-    return{date:r.date,route:r.route||r.tollType,type:r.tollType,amount:r.total,cur:r.cur,note:r.shop&&r.route?r.shop:''};
-  },
-  fmt(n,cur){return (Number(n)||0).toLocaleString('de-DE',{maximumFractionDigits:2})+' '+(cur||'RSD')},
-  fmtDate(iso){if(!iso)return '—';const p=iso.split('-');return p[2]+'.'+p[1]+'.'+p[0]}
-};
+  })(0,d,0);
+  return res;
+}
+const dig=t=>String(t).replace(/\D/g,'');
+const decs=t=>{const m=String(t).match(/[.,](\d+)$/);return m?m[1].length:0};
+/* količina × cena = iznos: nađi najmanju izmenu cifara koja zadovoljava računicu */
+function repairQty(qt,pt,tt){
+  const qd=dig(qt),pd=dig(pt),td=dig(tt),qs=Math.pow(10,decs(qt)),ps=Math.pow(10,decs(pt)),ts=Math.pow(10,decs(tt));
+  const Vq=vars(qd,1),Vp=vars(pd,3),Vt=vars(td,3);
+  const T=new Map();Vt.forEach((e,s)=>T.set(parseInt(s,10),e));
+  let best=null;
+  Vq.forEach((eq,qs_)=>{const q=parseInt(qs_,10)/qs;if(q<=0)return;
+    Vp.forEach((ep,ps_)=>{const p=parseInt(ps_,10)/ps,c=Math.round(q*p*ts);
+      for(const dc of [0,-1,1]){const et=T.get(c+dc);if(et===undefined)continue;
+        const cost=eq*1.5+ep+et+(dc?0.5:0);
+        if(!best||cost<best.cost)best={cost,q,p,t:(c+dc)/ts};break}
+    });
+  });
+  return best;
+}
+/* kandidati za iznos reda kad je količina 1 (cena i iznos moraju biti isti broj) */
+function lineCands(pt,tt,n){
+  const pd=dig(pt),td=dig(tt),Vp=vars(pd,3),Vt=vars(td,3),all=new Set([...Vp.keys(),...Vt.keys()]),out=[];
+  all.forEach(s=>{
+    const ep=Vp.has(s)?Vp.get(s):4,et=Vt.has(s)?Vt.get(s):4,c=parseInt(s,10);
+    out.push({c,cost:ep+et+(s.slice(-2)==='00'?0:3)+(s.slice(-3,-2)==='0'?0:.4)});
+  });
+  out.sort((a,b)=>a.cost-b.cost);return out.slice(0,n||8);
+}
+/* većinsko glasanje: koji iznos stoji na računu (ukupno se ponavlja u više redova) */
+function voteTotal(tokens){
+  const vote=new Map();
+  tokens.forEach(t=>{
+    const d=dig(t);if(!d||parseInt(d,10)===0)return;
+    vars(d,2).forEach((e,s)=>{const c=parseInt(s,10);vote.set(c,(vote.get(c)||0)+(3-e)+(e===0?.5:0))});
+  });
+  const ent=[...vote.entries()];
+  const noTax=ent.filter(([c])=>!ent.some(([c2,w2])=>w2>0&&(Math.abs(c*6-c2)<=8||Math.abs(c*11-c2)<=12)));
+  let best=null;(noTax.length?noTax:ent).forEach(([c,w])=>{if(!best||w>best.w)best={c,w}});
+  return best&&best.w>=3?best.c/100:null;
+}
+/* birai kandidate po redovima tako da zbir bude tačno ukupan iznos */
+function fitSum(cands,target){
+  const T=Math.round(target*100);
+  let layer=new Map([[0,{cost:0,ch:[]}]]);
+  cands.forEach(cl=>{
+    const nx=new Map();
+    layer.forEach((st,sum)=>{
+      cl.forEach((c,idx)=>{
+        const ns=sum+c.c,cost=st.cost+c.cost,cur=nx.get(ns);
+        if(!cur||cost<cur.cost)nx.set(ns,{cost,ch:st.ch.concat(idx)});
+      });
+    });
+    if(nx.size>4000){layer=new Map([...nx.entries()].sort((a,b)=>a[1].cost-b[1].cost).slice(0,4000))}else layer=nx;
+  });
+  const hit=layer.get(T);return hit?hit.ch:null;
+}
+
+/* ---------- datum / vreme ---------- */
+function validDate(d,m,y){const now=new Date().getFullYear();return d>=1&&d<=31&&m>=1&&m<=12&&y>=2005&&y<=now+1}
+function iso(y,m,d){return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0')}
+function dateIn(line){
+  let m,res=[];
+  const a=/(?:^|\D)(\d{1,2})\s*[.\/-]\s*(\d{1,2})\s*[.\/-]\s*(\d{4}|\d{2})(?!\d)/g,b=/(?:^|\D)(\d{4})\s*[.\/-]\s*(\d{1,2})\s*[.\/-]\s*(\d{1,2})(?!\d)/g;
+  while((m=a.exec(line))){let y=+m[3];if(y<100)y+=2000;res.push([+m[1],+m[2],y,m[1]+m[2]+m[3]])}
+  while((m=b.exec(line)))res.push([+m[3],+m[2],+m[1],m[3]+m[2]+m[1]]);
+  return res;
+}
+/* ako OCR pogreši cifre (88.83.2022), pokušaj najmanju izmenu koja daje ispravan datum */
+function repairDate(line){
+  const re=/(\d{1,2})\s*[.\/-]\s*(\d{1,2})\s*[.\/-]\s*(\d{4})(?!\d)/g;let m,best=null;
+  while((m=re.exec(line))){
+    const f=(s,lim)=>{const v=vars(s,Math.min(2,s.length)),o=[];v.forEach((e,k)=>o.push([+k,e]));return o};
+    for(const [d,ed] of f(m[1]))for(const [mo,em] of f(m[2]))for(const [y,ey] of f(m[3])){
+      if(!validDate(d,mo,y))continue;const c=ed+em+ey;
+      if(!best||c<best.c)best={c,iso:iso(y,mo,d)};
+    }
+  }
+  return best&&best.c<=3?best.iso:null;
+}
+function parseDate(L){
+  const labelRe=/datum|date|vreme|izdavanja|izdat/;
+  let pref=null,any=null,bad=null;
+  for(const l of L){
+    for(const [d,mo,y] of dateIn(l.f)){
+      if(!validDate(d,mo,y))continue;
+      const v=iso(y,mo,d);
+      if(labelRe.test(l.f)&&!pref)pref=v;
+      if(!any)any=v;
+    }
+    if(!any&&!bad&&/\d{1,2}\s*[.\/-]\s*\d{1,2}\s*[.\/-]\s*\d{4}/.test(l.f))bad=repairDate(l.f);
+  }
+  return pref||any||bad||null;
+}
+function parseTime(L){
+  let first=null;
+  for(const l of L){
+    const m=l.f.match(/(?:^|\D)([01]?\d|2[0-3])\s*:\s*([0-5]\d)(?:\s*:\s*[0-5]\d)?(?!\d)/);
+    if(!m)continue;const t=String(m[1]).padStart(2,'0')+':'+m[2];
+    if(/\d{1,4}\s*[.\/-]\s*\d{1,2}\s*[.\/-]\s*\d{2,4}/.test(l.f))return t;
+    if(!first)first=t;
+  }
+  return first;
+}
+
+/* ---------- pravila ---------- */
+const SKIP=/(^|\s)(sb|pb|pt|eb|et)\s*:|pdv|porez|osnovica|ukupn|za\s*uplat|za\s*placanj|gotovin|karti[cs]|povra[ct]|\bpib\b|ibfm|\bmb\b|maticn|kasir|operater|hvala|ptfr|\bpfr\b|racun\b|automat|datum|valuta|nacin\s*placanja|uplace|kusur|zaokruz|popust|\bstopa\b|oznaka|artikli|iznos|\bbanka\b|tekuc|poziv\s*na|instrukcij|za\s*vozilo|\bmarka\b|\bmodel\b|kubikaz|kilovat|sasij|broj\s*motora|www|@|\.rs\b|\.com\b|\btel\b|telefon|^rb\b|naziv|\bjm\b|kolicina|\bcena\b|faktura|inkasant|priznanica/;
+const LABOR=/\b(rad|radovi|rada|radna\s*snaga|radni\s*sat|sat\s*rada|usluga|usluge|servis|servisiranje|montaza|demontaza|montiranje|ugradnja|zamena|popravka|dijagnostika|balansiranje|centriranje|geometrija|pranje|podesavanje|remont|varenje|lakiranje|vulkanizerske?)\b/;
+const HOURLY=/\b(radni\s*sat|sat\s*rada|rad|radna\s*snaga|radovi)\b/;
+const FUELNAME=/\b(dizel|diesel|eurodizel|euro\s*diz\w*|evro\s*diz\w*|bmb|benzin\w*|eurosuper|euro\s*super|premium|infodizel|lpg|tng|autogas|auto\s*gas|ms\s?9[58]|es\s?9[58]|bms|ed\s?\d{1,2}|g-?drive)\b/;
+const NOTFUEL=/filter|aditiv|ulje|ulja|castrol|pumpa|sprej|tecnost|brisac/;
+const CATRULES=[
+  [/klim|freon|polensk|kabinsk/,'Klima'],
+  [/kocn|plocic|plo[a-z]{0,2}ic[ea]|gdb\d|\bdisk|dobos|brake|\babs\b/,'Kočnice'],
+  [/\bgum[aeu]\b|pneumat|felna|michelin|bridgestone|goodyear|pirelli|dunlop|\bsava\b|tigar|vulkaniz|\d{3}\/\d{2}\s*r?\d{2}/,'Gume'],
+  [/ulj|castrol|motul|mobil\b|\bshell\b|\belf\b|\btotal\b|valvoline|liqui|\d{1,2}w-?\d{2}|filter|filtar|svecic|zarnic|aditiv|antifriz|rashladn/,'Ulje i filteri'],
+  [/akumulator|akumul|sijalic|alternator|anlaser|senzor|osigura|relej|lambda|bobina|\bfar\b/,'Elektrika'],
+  [/kvacil|menjac|zamajac/,'Menjač / kvačilo'],
+  [/zupcast|\bkais|\bkai\b|\d?pk\d{3,}|razvod|pumpa\s*vode|\bpa\s*vode|motor|turbo|vgt|brizgalic|ventil|zaptivac|glav[aeu]\b|lanac|termostat|hladnjak|intercooler|\bdpf\b|\begr\b|auspuh|ispuh/,'Motor'],
+  [/tehnick|registracij|polisa|osiguranje/,'Registracija / tehnički'],
+  [/\blim\b|farb|lakir|brisac|retrovizor|branik|vrata|blatobran|haub|staklo/,'Karoserija']];
+const CATS=['Ulje i filteri','Kočnice','Gume','Motor','Menjač / kvačilo','Elektrika','Karoserija','Klima','Registracija / tehnički','Ostalo'];
+const STATIONS=[['nis','NIS'],['gazprom','Gazprom'],['omv','OMV'],['mol','MOL'],['lukoil','Lukoil'],['eko','EKO'],['petrol','Petrol'],['shell','Shell'],['euro\\s*petrol','Euro Petrol'],['knez\\s*petrol','Knez Petrol'],['jugopetrol','Jugopetrol']];
+function catOf(f){for(const [re,c] of CATRULES)if(re.test(f))return c;return 'Ostalo'}
+function fixVisc(s){
+  return s.replace(/\b([0-9SO]{1,2})W-?([0-9]{2})\b/g,(m,a,b)=>{
+    a=a.replace(/S/g,'5').replace(/O/g,'0');
+    if(!['16','20','30','40','50','60'].includes(b)){const t=b.replace(/8/g,'0').replace(/9/g,'0');if(['20','30','40','50','60'].includes(t))b=t;else{const u=b[0]+'0';if(['20','30','40','50','60'].includes(u))b=u}}
+    return a+'W'+b});
+}
+function prettyName(s){
+  s=fixVisc(String(s).replace(/@/g,'0').replace(/^\d{3,6}\s+(?=[A-Za-zČĆŽŠĐ])/,'').replace(/\s+[A-ZĐŠČĆŽ]$/,'').replace(/[|_=;]+/g,' ').replace(/\s+/g,' ').trim());
+  if(/[a-zčćšžđ]/.test(s))return s;
+  return s.split(' ').map((w,i)=>/\d/.test(w)||w.length<=3?(i===0&&w.length>1&&!/\d/.test(w)?w[0]+w.slice(1).toLowerCase():w):w[0]+w.slice(1).toLowerCase()).join(' ');
+}
+
+/* ---------- stavke (delovi / radovi) ---------- */
+const QTYRE=/^(.*?)(\d+(?:[.,]\d{1,3})?)\s*[xX×*%«]\s*(\d[\d.,]*)\s+(\d[\d.,]*)(?:\s+\S{1,2})?\s*$/;
+const TABLERE=/^(\d{1,3})[.)]?\s+(.+?)\s+(kom|kos|kpl|pcs|h|sat|sati|cas|casova|l|lit|kg|m|set|par|pak|usl|usluga)\s+(\d+(?:[.,]\d+)?)\s+(\d[\d.,]*)(.*)$/;
+const letters=s=>(s.match(/[A-Za-zČĆŠŽĐčćšžđ]/g)||[]).length;
+function mkItem(name,qty,price,total,jm){
+  const f=fold(name);let k='deo';
+  if(/^(h|sat|sati|cas|casova)$/.test(jm||''))k='rad';
+  else if(LABOR.test(f))k=HOURLY.test(f)?'rad':'usluga';
+  return{k,name:prettyName(name),cat:catOf(f),qty,price,total,unit:k==='rad'?'h':(k==='usluga'?'usl':(jm&&jm!=='kos'?jm:'kom')),fix:false};
+}
+function extractItems(L){
+  const items=[],used=new Set();let lastIdx=-1,explicit='';
+  /* 1) fiskalni račun: naziv, pa red „kol x cena iznos“ */
+  L.forEach((l,i)=>{
+    const m=l.o.match(QTYRE);if(!m)return;
+    const pt=cleanMoney(m[3]),tt=cleanMoney(m[4]);if(!pt||!tt)return;
+    let name=m[1].trim(),ni=i;
+    if(letters(name)<3){ni=i-1;name=ni>=0&&!used.has(ni)&&letters(L[ni].o)>=3&&!SKIP.test(L[ni].f)?L[ni].o:''}
+    if(!name)return;
+    used.add(i);used.add(ni);lastIdx=Math.max(lastIdx,i);
+    const it=mkItem(name,pm(m[2]),pm(pt),pm(tt),'');it._raw={q:m[2],p:pt,t:tt};it._line=i;items.push(it);
+  });
+  /* 2) tabela fakture: Rb | Naziv | JM | Kol | Cena | ... | Ukupno */
+  if(!items.length)L.forEach((l,i)=>{
+    const m=l.f.match(TABLERE);if(!m)return;
+    const pt=cleanMoney(m[5]);if(!pt)return;
+    const st=l.f.indexOf(m[2],m[1].length),name=l.o.substr(st,m[2].length);
+    const rest=monies(m[6]),price=pm(pt),qty=pm(m[4]),total=rest.length?rest[rest.length-1].v:r2(qty*price);
+    const it=mkItem(name,qty,price,total,m[3]);it._line=i;items.push(it);used.add(i);lastIdx=Math.max(lastIdx,i);
+  });
+  /* 3) opšti slučaj: naziv ... iznos */
+  if(!items.length)L.forEach((l,i)=>{
+    const cat=l.f.match(/^(kategorija|grupa|vrsta)\s*:\s*(.{3,})$/);if(cat&&!monies(l.o).length){explicit=tc(l.o.replace(/^[^:]*:\s*/,''));return}
+    if(SKIP.test(l.f))return;
+    const ms=monies(l.o);if(!ms.length)return;
+    const name=l.o.slice(0,ms[0].i).replace(/[\s:.\-]+$/,'').trim()||l.o.replace(/\d[\d.,]*/g,' ').trim();
+    if(letters(name)<3)return;
+    const price=ms[0].v,total=ms[ms.length-1].v,q=price>0&&ms.length>1?total/price:1;
+    const it=mkItem(name,Math.abs(q-Math.round(q))<.01&&q>=1?Math.round(q):1,price,total,'');
+    if(explicit){it.cat=catOf(fold(explicit))!=='Ostalo'?catOf(fold(explicit)):explicit}
+    it._line=i;items.push(it);lastIdx=Math.max(lastIdx,i);
+  });
+  return{items,lastIdx};
+}
+
+/* ---------- gorivo ---------- */
+function fuelTypeOf(f){
+  if(/\blpg\b|autogas|auto\s*gas/.test(f))return 'LPG';
+  if(/\btng\b/.test(f))return 'TNG';
+  if(/dizel|diesel|\bed\s?\d|infodiz/.test(f)||/diz/.test(f))return 'Dizel';
+  return 'Benzin';
+}
+function stationOf(L){
+  const head=L.slice(0,10);let brand='',loc='';
+  for(const [re,name] of STATIONS){if(head.some(l=>new RegExp('\\b'+re+'\\b').test(l.f))){brand=name;break}}
+  for(const l of head){const m=l.f.match(/\bb\.?\s?s\.?\s+(\D.*)$/);if(m){loc=tc(l.o.slice(l.f.indexOf(m[1])).replace(/[^\p{L}\d .\-]/gu,''));break}}
+  if(!loc){const ln=head.find(l=>/\bb\.?\s?s\.?\s+\d*\s*[a-z]/.test(l.f));if(ln)loc=tc(ln.o.replace(/^.*?\bb\.?\s?s\.?\s+/i,'').replace(/[^\p{L}\d .\-]/gu,''))}
+  return [brand,loc].filter(Boolean).join(' ')||'';
+}
+
+/* ---------- putarina ---------- */
+function parseToll(L,T,r){
+  const o={place:'',from:'',to:'',road:'',cat:'',amount:0,base:0,vat:0,no:'',time:r.time};
+  const get=re=>{const l=L.find(x=>re.test(x.f));return l||null};
+  let rel=get(/relacij|naplatn\w*\s*(stanica|mesto)|mesto\s*naplate|deonica/);
+  if(rel){
+    const v=rel.o.replace(/^[^:]*:\s*/,'').replace(/^.*?(relacija|deonica)\s*/i,'');
+    const parts=v.split(/\s*[-~=>]+\s*|\s+[–—]\s+/).map(s=>tc(s.replace(/[^\p{L}\d .]/gu,''))).filter(s=>s&&letters(s)>=2);
+    if(parts.length>=2){o.from=parts[0];o.to=parts[parts.length-1]}else if(parts.length===1){o.from=o.to=parts[0]}
+  }
+  const ul=get(/\bulaz\b/),iz=get(/\bizlaz\b/);
+  if(!o.from&&ul&&iz){const c=l=>tc(l.o.replace(/^[^:]*[:\s]\s*/,'').replace(/[^\p{L} \-]/gu,''));o.from=c(ul);o.to=c(iz)}
+  o.place=o.from&&o.to?(fold(o.from)===fold(o.to)?o.from:o.from+' — '+o.to):(o.from||o.to||'');
+  const rd=get(/autoput|koridor|auto\s*put/);
+  if(rd)o.road=tc(rd.o.replace(/[^\p{L}\d .\-]/gu,'').trim());
+  const ct=T.match(/(\d)\s*\.?\s*kategorij/)||T.match(/kategorij\w*\s*[:\-]?\s*(iv|iii|ii|ia|ib|i|[1-4])\b/);
+  if(ct)o.cat=ct[1].toUpperCase();
+  const nm=T.match(/\bbr\.?\s*(\d{4,6}-\d{4,8})/);if(nm)o.no=nm[1];
+  /* iznosi */
+  const val=re=>{const l=L.find(x=>re.test(x.f)&&!/osnovic|pdv/.test(x.f));if(!l)return null;const m=monies(l.o);return m.length?m[m.length-1].s:null};
+  const tok={t:val(/ukupan\s*iznos|ukupno|sveukupno|za\s*uplat|za\s*placanj/)||val(/cena\s*za|^cena|iznos/)};
+  const lo=L.find(x=>/osnovic/.test(x.f)),lv=L.find(x=>/pdv|porez/.test(x.f)&&!/osnovic/.test(x.f));
+  tok.b=lo&&monies(lo.o).length?monies(lo.o)[0].s:null;tok.v=lv&&monies(lv.o).length?monies(lv.o).slice(-1)[0].s:null;
+  /* provera: osnovica + PDV 20% = ukupno */
+  const cand=t=>t?[...vars(dig(t),2)].map(([s,e])=>({c:parseInt(s,10),e,dec:decs(t)})):[{c:null,e:0}];
+  if(tok.t&&tok.b&&tok.v){
+    let best=null;
+    for(const t of cand(tok.t))for(const b of cand(tok.b)){
+      const vc=Math.round(b.c*0.2);if(t.c-b.c-vc>1||t.c-b.c-vc<-1)continue;
+      for(const v of cand(tok.v)){if(Math.abs(v.c-vc)>1)continue;const cost=t.e*1.2+b.e+v.e;if(!best||cost<best.cost)best={cost,t:t.c,b:b.c,v:v.c}}
+    }
+    if(best){o.amount=best.t/100;o.base=best.b/100;o.vat=best.v/100;if(best.cost>0)o.fixed=true}
+  }
+  if(!o.amount){
+    if(tok.t)o.amount=pm(tok.t);
+    else if(tok.b)o.amount=r2(pm(tok.b)*1.2);
+    else{const loose=T.match(/(\d{1,3}(?:\.\d{3})+|\d{2,5})\s*(?:din|rsd)\b/);if(loose)o.amount=parseFloat(loose[1].replace(/\./g,''))}
+  }
+  return o;
+}
+
+/* ---------- vozilo / kilometraža ---------- */
+function kmOf(L){
+  const num=s=>{const n=parseInt(String(s).replace(/\D/g,''),10);return n>=1000&&n<=2500000?n:0};
+  for(let i=0;i<L.length;i++){
+    const f=L[i].f;if(/sledec/.test(f))continue;
+    if(/predjeni|kilometr|kilometraz|\bkm\b/.test(f)){
+      for(let j=i;j<Math.min(L.length,i+3);j++){
+        const t=stripDT(L[j].f);const m=t.match(/(?:^|\D)(\d{1,3}[ .]\d{3}|\d{4,7})(?!\d)/);
+        if(m&&!(j===i&&/sledec/.test(t))){const n=num(m[1]);if(n)return n}
+      }
+    }
+  }
+  return 0;
+}
+
+/* ---------- glavna funkcija ---------- */
+function lines(text){
+  text=String(text||'').replace(/\r/g,'').replace(/(\d)\s*[хХ×✕✖]\s*(?=\d)/g,'$1 x ');
+  text=translit(text).replace(/[‐‑‒–—−]/g,'-').replace(/(\w)@(?=[\w\s]|$)/g,'$10');
+  return text.split('\n').map(l=>l.replace(/[ \t\u00a0]+/g,' ').trim()).filter(l=>l.length>1).map(l=>{const o=fixNums(l);return{o,f:fold(o)}});
+}
+function parse(text,force){
+  const L=lines(text),T=L.map(l=>l.f).join('\n');
+  const r={raw:String(text||''),date:parseDate(L),time:parseTime(L),cur:/\b(eur|€)\b|€/i.test(T)&&!/\brsd|\bdin\b/.test(T)?'EUR':'RSD',
+    kind:'servis',shop:'',items:[],total:0,fuel:null,toll:null,km:0,notes:[],warn:[],station:''};
+  /* vrsta dokumenta */
+  const tollHits=['priznanica','inkasant','relacij','autoput','koridor','putevi\\s*srbije','naplat','putarin','vinjet','kategorij'].filter(k=>new RegExp(k).test(T)).length;
+  const isToll=force?force==='putovanje':(tollHits>=2||/putarin|vinjet|priznanica/.test(T));
+  /* stavke */
+  const ex=isToll?{items:[],lastIdx:-1}:extractItems(L);let items=ex.items;
+  /* ukupno (glasanje po više redova) */
+  const labTok=[],sumTok=[];
+  L.forEach((l,i)=>{
+    const ms=monies(l.o).filter(m=>m.v>0);if(!ms.length)return;
+    const lab=/ukupn|za\s*uplat|za\s*placanj|sveukupno|ukupan\s*iznos/.test(l.f)&&!/pdv|porez|osnovic|popust/.test(l.f);
+    if(lab)labTok.push(ms[ms.length-1].s);
+    else if(ex.lastIdx>=0&&i>ex.lastIdx&&!/pdv|porez|osnovic|^\W*(sb|ch)\W/.test(l.f)&&ms.length===1)sumTok.push(ms[0].s);
+  });
+  let total=isToll?null:voteTotal(labTok.concat(sumTok));
+  /* ispravka stavki računicom */
+  if(items.length){
+    items.forEach(it=>{
+      if(!it._raw)return;
+      const q=pm(it._raw.q);
+      if(Math.abs(q-1)<.001){it._q1=true;return}
+      const fx=repairQty(it._raw.q,it._raw.p,it._raw.t);
+      if(!fx){it._q1=false;return}
+      if(Math.abs(fx.q-q)>.0001||Math.abs(fx.p-it.price)>.0001||Math.abs(fx.t-it.total)>.0001){it.qty=fx.q;it.price=fx.p;it.total=fx.t;it.fix=true}
+      if(Math.abs(fx.q-1)<.001)it._q1=true;else it._ok=true;
+    });
+    const cands=items.map(it=>it._q1&&it._raw?lineCands(it._raw.p,it._raw.t,12):[{c:Math.round(it.total*100),cost:0}]);
+    const apply=ch=>items.forEach((it,i)=>{const c=cands[i][ch[i]].c/100;if(Math.abs(c-it.total)>.001){it.total=c;it.price=r2(c/(it.qty||1));it.fix=true}});
+    apply(items.map(()=>0));
+    const sumNow=r2(items.reduce((s,i)=>s+i.total,0));
+    if(total&&Math.abs(sumNow-total)>.01){const ch=fitSum(cands,total);if(ch)apply(ch)}
+    items.forEach(it=>{it.total=r2(it.total);it.price=r2(it.price)});
+    if(items.length===1&&items[0]._ok)total=items[0].total;
+  }
+  const sum=r2(items.reduce((s,i)=>s+i.total,0));
+  r.total=total||sum||0;
+  /* gorivo: stavke sa nazivom goriva */
+  let fuelItems=items.filter(it=>{const f=fold(it.name);return FUELNAME.test(f)&&!NOTFUEL.test(f)});
+  if(force==='gorivo'&&!fuelItems.length&&items.length)fuelItems=[items.slice().sort((a,b)=>b.total-a.total)[0]];
+  const fuelByText=!fuelItems.length&&force!=='servis'&&/\b(dizel|diesel|bmb|benzin|eurosuper|lpg|tng|autogas)\b/.test(T)&&T.match(/(\d{1,3}[.,]\d{1,3})\s*(l|lit|ltr|litara|kg)\b/);
+  r.station=stationOf(L);
+  /* kilometraža, servisna nalepnica */
+  r.km=kmOf(L);
+  const oil=T.match(/vrsta\s*mot\w*\.?\s*ulja\s*:?\s*([^\n]+)/);
+  if(oil){const raw=L.find(l=>/vrsta\s*mot/.test(l.f));const v=raw?raw.o.replace(/^.*?ulja\s*:?\s*/i,'').trim():'';if(v)r.notes.push('Ulje: '+fixVisc(v))}
+  const nx=T.match(/sledec\w*\s*servis\D{0,6}(\d{1,3}[ .]?\d{3})/);if(nx)r.notes.push('Sledeći servis: '+nx[1].replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.')+' km');
+  const inv=T.match(/faktura\s*br\.?\s*:?\s*([\w\-\/]+)/);if(inv)r.notes.push('Faktura br. '+inv[1].toUpperCase());
+  /* naziv radnje: prvi redovi pre prvog reda sa brojem */
+  const head=[];for(const l of L){if(/\d/.test(l.f)||SKIP.test(l.f)||letters(l.o)<3)break;head.push(l.o);if(head.length>=2)break}
+  r.shop=tc(head.join(' ').replace(/[^\p{L}\d .&\-]/gu,'')).replace(/\bDoo\b/,'DOO').replace(/\bAd\b/,'AD').slice(0,40);
+  /* vrsta */
+  if(isToll){r.kind='putovanje';r.toll=parseToll(L,T,r);r.total=r.toll.amount||r.total}
+  else if(force!=='servis'&&(force==='gorivo'||fuelItems.length||fuelByText)){
+    r.kind='gorivo';
+    if(fuelItems.length){
+      const it=fuelItems.slice().sort((a,b)=>b.total-a.total)[0],f=fold(it.name)+' '+(L[it._line]?L[it._line].f:'');
+      r.fuel={type:fuelTypeOf(f),unit:/\bkg\b|\bcng\b|\bkng\b|\bkpg\b|prirodni\s*gas/.test(f)?'kg':'L',qty:it.qty,price:it.price,total:it.total,name:it.name,fix:it.fix};
+      const other=items.filter(x=>x!==it);if(other.length)r.warn.push('Na računu ima i drugih stavki ('+other.map(x=>x.name).join(', ')+') — u gorivo se računa samo '+it.name+'.');
+    }else if(!fuelByText){r.fuel={type:'Dizel',unit:'L',qty:0,price:0,total:r.total,name:''}}
+    else{
+      const q=pm(fuelByText[1]);r.fuel={type:fuelTypeOf(T),unit:/kg/.test(fuelByText[2])?'kg':'L',qty:q,price:q&&r.total?r2(r.total/q):0,total:r.total,name:''};
+    }
+    if(r.fuel.qty&&r.fuel.price&&Math.abs(r.fuel.qty*r.fuel.price-r.fuel.total)>Math.max(1,r.fuel.total*.004))r.warn.push('Količina × cena se ne poklapa sa iznosom — proveri brojeve.');
+    r.items=[];
+  }else{
+    r.items=items;
+    if(total&&items.length&&Math.abs(sum-total)>.01)r.warn.push('Zbir stavki ('+fmt(sum,r.cur)+') se ne poklapa sa ukupnim iznosom ('+fmt(total,r.cur)+') — proveri stavke.');
+  }
+  if(items.some(i=>i.fix)&&r.kind!=='putovanje')r.warn.push('Neke cifre su ispravljene proverom računice (označene sa ✱) — proveri ih.');
+  return r;
+}
+
+/* ---------- pretvaranje u zapis aplikacije ---------- */
+function titleFor(r){
+  const its=r.items;if(!its.length)return r.notes.some(n=>/^Ulje/.test(n))?'Mali servis':(r.shop?'Servis':'Servis');
+  if(its.length===1)return its[0].name;
+  const sums={};its.forEach(i=>{sums[i.cat]=(sums[i.cat]||0)+i.total});
+  const cats=Object.keys(sums).filter(c=>c!=='Ostalo').sort((a,b)=>sums[b]-sums[a]);
+  const hasLabor=its.some(i=>i.k!=='deo');
+  if(cats.length===1&&cats[0]==='Ulje i filteri'&&its.some(i=>/ulj/.test(fold(i.name)))&&its.some(i=>/filter/.test(fold(i.name))))return 'Mali servis (ulje i filteri)';
+  if(!cats.length)return (hasLabor?'Servis':'Delovi')+': '+its.slice(0,2).map(i=>i.name).join(', ');
+  return (hasLabor?'Servis: ':'Delovi: ')+cats.slice(0,3).join(', ');
+}
+function toRecord(r,kind){
+  if(kind==='servis'){
+    const its=r.items.map(i=>({k:i.k,cat:i.cat,name:i.name,qty:i.qty,price:i.price,total:i.total,unit:i.unit}));
+    const sums={};its.forEach(i=>{sums[i.cat]=(sums[i.cat]||0)+i.total});
+    const cat=Object.keys(sums).sort((a,b)=>sums[b]-sums[a]).map(c=>CATS.includes(c)?c:'Ostalo')[0]||(r.notes.some(n=>/^Ulje/.test(n))?'Ulje i filteri':'Ostalo');
+    return{date:r.date,km:r.km||'',cat,title:titleFor(r),cost:r.total||r2(its.reduce((s,i)=>s+i.total,0))||'',mech:r.shop,items:its,note:r.notes.join('\n')};
+  }
+  if(kind==='gorivo'){const f=r.fuel||{};return{date:r.date,ftype:f.type||'',unit:f.unit||'L',liters:f.qty||'',price:f.price||'',cost:f.total||r.total||'',station:r.station||r.shop,full:true}}
+  const t=r.toll||{};
+  return{date:r.date,time:r.time||'',route:t.place||'',type:/vinjet/.test(fold(r.raw))?'Vinjeta':'Putarina',amount:t.amount||r.total||'',cur:r.cur,
+    note:[t.road,t.cat?t.cat+'. kategorija':'',t.no?'Priznanica '+t.no:''].filter(Boolean).join(' · ')};
+}
+function fmt(n,cur){return (Number(n)||0).toLocaleString('de-DE',{maximumFractionDigits:2})+' '+(cur||'RSD')}
+function fmtDate(i){if(!i)return '—';const p=i.split('-');return p[2]+'.'+p[1]+'.'+p[0]+'.'}
+/* ocena kvaliteta očitavanja (za izbor boljeg prolaza) */
+function score(r){
+  if(r.kind==='putovanje'){const t=r.toll||{};return (t.amount?4:0)+(t.place?3:0)+(r.date?1:0)+(r.time?1:0)}
+  if(r.kind==='gorivo'){const f=r.fuel||{};return (f.qty?3:0)+(f.price?2:0)+(f.total?3:0)+(r.date?1:0)-r.warn.length}
+  return Math.min(r.items.length,8)+(r.total?3:0)+(r.date?1:0)-r.warn.length;
+}
+
+/* ---------- spajanje više prolaza OCR-a: glasanje po stavkama ---------- */
+function bg(s){s=fold(s).replace(/[^a-z0-9]/g,'');const m=new Map();for(let i=0;i<s.length-1;i++){const k=s.substr(i,2);m.set(k,(m.get(k)||0)+1)}return m}
+function sim(a,b){let n=0,ta=0,tb=0;a.forEach(v=>ta+=v);b.forEach(v=>tb+=v);a.forEach((v,k)=>{if(b.has(k))n+=Math.min(v,b.get(k))});return ta+tb?2*n/(ta+tb):0}
+function merge(rs){
+  rs=rs.filter(Boolean);if(rs.length<2)return rs[0]||null;
+  const sv=rs.filter(r=>r.kind==='servis'&&r.items.length);
+  if(!sv.length)return rs.sort((a,b)=>score(b)-score(a))[0];
+  const base=sv.sort((a,b)=>b.items.length-a.items.length||score(b)-score(a))[0];
+  const snap=base.items.map(i=>({t:i.total,p:i.price,f:i.fix}));const gap0=Math.abs(r2(base.items.reduce((s,i)=>s+i.total,0))-base.total);
+  const nb=base.items.map(i=>bg(i.name));
+  base.items.forEach((it,bi)=>{
+    if(!it._q1||!it._raw)return;
+    const reads=[it._raw.p,it._raw.t];
+    sv.forEach(r=>{if(r===base)return;let best=null;
+      r.items.forEach(o=>{if(!o._raw||!o._q1)return;const s=sim(nb[bi],bg(o.name));if(s>=.6&&(!best||s>best.s))best={s,o}});
+      if(best)reads.push(best.o._raw.p,best.o._raw.t)});
+    if(reads.length<4)return;
+    const len={};reads.forEach(t=>{const l=dig(t).length;len[l]=(len[l]||0)+1});
+    const L=+Object.keys(len).sort((a,b)=>len[b]-len[a])[0];
+    const R=reads.filter(t=>dig(t).length===L).map(t=>vars(dig(t),3));
+    const all=new Set();R.forEach(m=>m.forEach((e,k)=>{if(e<=2)all.add(k)}));
+    const out=[];all.forEach(k=>{let c=0;R.forEach(m=>{c+=m.has(k)?m.get(k):4});out.push({c:parseInt(k,10),cost:c+(k.slice(-2)==='00'?0:1.5*reads.length)+(k.slice(-3,-2)==='0'?0:.2*reads.length)})});
+    out.sort((a,b)=>a.cost-b.cost);it._vote=out.slice(0,12);
+    const v=out[0].c/100;if(Math.abs(v-it.total)>.001){it.total=v;it.price=r2(v/(it.qty||1));it.fix=true}
+  });
+  /* zbir sa ukupnim iznosom */
+  const tot=base.total,sum=()=>r2(base.items.reduce((s,i)=>s+i.total,0));
+  if(tot&&Math.abs(sum()-tot)>.01&&base.items.every(i=>i._vote||!i._q1)){
+    const cands=base.items.map(i=>i._vote||[{c:Math.round(i.total*100),cost:0}]);const ch=fitSum(cands,tot);
+    if(ch)base.items.forEach((it,i)=>{const c=cands[i][ch[i]].c/100;if(Math.abs(c-it.total)>.001){it.total=c;it.price=r2(c/(it.qty||1));it.fix=true}});
+  }
+  if(base.total&&Math.abs(r2(base.items.reduce((s,i)=>s+i.total,0))-base.total)>gap0+.01)base.items.forEach((it,i)=>{it.total=snap[i].t;it.price=snap[i].p;it.fix=snap[i].f});
+  base.warn=base.warn.filter(w=>!/^Zbir stavki/.test(w)&&!/ispravljene/.test(w));
+  if(tot&&Math.abs(sum()-tot)>.01)base.warn.push('Zbir stavki ('+fmt(sum(),base.cur)+') se ne poklapa sa ukupnim iznosom ('+fmt(tot,base.cur)+') — proveri stavke.');
+  if(base.items.some(i=>i.fix))base.warn.push('Neke cifre su ispravljene proverom računice i poređenjem očitavanja (✱) — proveri ih.');
+  return base;
+}
+return{parse,merge,toRecord,fmt,fmtDate,score,CATS,_t:{vars,repairQty,voteTotal,fitSum,monies,fixNums,lines,tc,translit,fold}};
+})();
+
 /* ---------- SKENIRANJE RAČUNA: UI + OCR ---------- */
 (function(){
 const TESS_URL='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
 const KIND_TAB={servis:'servisi',gorivo:'gorivo',putovanje:'putovanja'};
-const KIND_LBL={servis:'🛠️ Servis',gorivo:'⛽ Gorivo',putovanje:'🛣️ Putarina'};
-let worker=null,parsed=null,kind='servis';
+const KIND_LBL={servis:'🛠️ Servis / delovi',gorivo:'⛽ Gorivo',putovanje:'🛣️ Putarina'};
+let worker=null,workerLang='',parsed=null,kind='servis',ctx={},texts=[];
 
 document.body.insertAdjacentHTML('beforeend',
  '<input type="file" id="scanFile" accept="image/*" hidden>'+
+ '<input type="file" id="scanCam" accept="image/*" capture="environment" hidden>'+
  '<dialog id="scanDlg"><div class="dlg" id="scanBody"></div></dialog>');
 const style=document.createElement('style');
-style.textContent='.scrow{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)}.scrow b{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;padding-top:2px}.scrow span{text-align:right;word-break:break-word}.scbar{height:8px;border-radius:6px;background:var(--card2);overflow:hidden;margin:14px 0 6px}.scbar i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}.scparts{display:block;text-align:left}details.scraw{margin:10px 0;font-size:.8rem;color:var(--muted)}details.scraw pre{white-space:pre-wrap;max-height:160px;overflow:auto;background:var(--card2);padding:8px;border-radius:8px}';
+style.textContent='.scrow{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)}.scrow b{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;padding-top:2px}.scrow span{text-align:right;word-break:break-word}.scbar{height:8px;border-radius:6px;background:var(--card2);overflow:hidden;margin:14px 0 6px}.scbar i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}details.scraw{margin:10px 0;font-size:.8rem;color:var(--muted)}details.scraw pre{white-space:pre-wrap;max-height:160px;overflow:auto;background:var(--card2);padding:8px;border-radius:8px}.scit{padding:7px 0;border-bottom:1px solid var(--line);font-size:.88rem}.scit .s{color:var(--muted);font-size:.78rem}.scwarn{background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.4);border-radius:10px;padding:8px 10px;margin:8px 0;font-size:.82rem}.scban{border:1px dashed var(--acc);border-radius:12px;padding:10px;margin:-4px 0 12px}.scban .small{margin-bottom:8px}.fix{color:var(--warn);font-weight:700}';
 document.head.appendChild(style);
 
 /* dugme u gornjoj traci */
 const b=document.createElement('button');b.id='scanBtn';b.title='Skeniraj račun ili putarinu';b.textContent='📷';
 $('addVehBtn').insertAdjacentElement('afterend',b);
-b.onclick=()=>$('scanFile').click();
+b.onclick=()=>{ctx={};$('scanFile').click()};
 
-/* dugme unutar formi za unos */
-const _of=openForm;
-openForm=function(type,id,pre){
-  _of(type,id,pre);
-  if(!id&&type!=='podsetnik'&&!(pre&&pre._scan)){
-    const h=$('dlgForm').querySelector('h3');
-    h.insertAdjacentHTML('afterend','<button type="button" class="btn-s" id="scanInForm" style="margin:-4px 0 12px">📷 Skeniraj račun</button>');
-    $('scanInForm').onclick=()=>{$('scanFile').click();$('dlg').close()};
-  }
-};
+/* ponuda skeniranja pri dodavanju (poziva je openForm) */
+window.ScanUI={attach(type,ed){
+  const h=$('dlgForm').querySelector('h3');if(!h||!FORMS_OK(type))return;
+  h.insertAdjacentHTML('afterend','<div class="scban"><div class="small"><b>📷 Skeniraj račun</b> — polja se popune automatski</div><div class="row"><button type="button" class="btn-s grow" id="sbCam">📷 Slikaj račun</button><button type="button" class="btn-s grow" id="sbPick">🖼️ Izaberi sliku</button></div></div>');
+  $('sbCam').onclick=()=>{ctx={type,rem:ed&&ed.rem};$('scanCam').click()};
+  $('sbPick').onclick=()=>{ctx={type,rem:ed&&ed.rem};$('scanFile').click()};
+}};
+const FORMS_OK=t=>t==='servis'||t==='gorivo'||t==='putovanje';
 
-$('scanFile').addEventListener('change',async e=>{
-  const f=e.target.files[0];e.target.value='';if(!f)return;
+['scanFile','scanCam'].forEach(id=>$(id).addEventListener('change',e=>{
+  const f=e.target.files[0];e.target.value='';if(f)run(f);
+}));
+
+function show(html){$('scanBody').innerHTML=html}
+function prog(txt,p){const m=$('scMsg'),bar=$('scBar');if(m)m.textContent=txt;if(bar&&p!=null)bar.style.width=Math.round(p*100)+'%'}
+
+async function run(f){
+  try{$('dlg').close()}catch(e){}
   show('<h3>📷 Skeniram račun…</h3><div id="scMsg" class="muted small">Priprema slike…</div><div class="scbar"><i id="scBar"></i></div>');
   $('scanDlg').showModal();
   try{
-    const cv=await prep(f);
+    const bmp=await loadBmp(f);
+    const cvA=prep(bmp,1300);
     await ensureWorker();
-    const {data}=await worker.recognize(cv);
-    parsed=SCAN.parse(data.text);kind=parsed.kind;
+    texts=[];const results=[];
+    const plan=[[cvA,6],[null,6,1900],[cvA,4],[null,6,900]];
+    let best=null;
+    for(let i=0;i<plan.length;i++){
+      const [cv0,psm,w]=plan[i];
+      const cv=cv0||prep(bmp,w);
+      prog('Čitam tekst… (prolaz '+(i+1)+'/'+plan.length+')',.2+i/plan.length*.75);
+      const t=await recognize(cv,psm);texts.push(t);
+      results.push(SCAN.parse(t));
+      best=results.length>1?SCAN.merge(results.slice()):results[0];
+      if(good(best))break;
+    }
+    parsed=best;kind=SCAN.score(parsed)<=2&&ctx.type?ctx.type:parsed.kind;
+    if(kind!==parsed.kind)parsed=SCAN.parse(texts[0],kind);
     renderResult();
   }catch(err){
     show('<h3>Skeniranje nije uspelo</h3><p class="muted">'+esc(err&&err.message==='offline'
@@ -998,75 +1450,111 @@ $('scanFile').addEventListener('change',async e=>{
       :'Pokušaj sa oštrijom slikom, bez senki i savijenog papira.')+'</p><div class="row"><button type="button" class="grow" id="scClose">Zatvori</button><button type="button" class="btn-p grow" id="scRetry">📷 Probaj ponovo</button></div>');
     $('scClose').onclick=()=>$('scanDlg').close();$('scRetry').onclick=()=>{$('scanDlg').close();$('scanFile').click()};
   }
-});
+}
+/* dovoljno dobro čitanje: nema upozorenja o zbiru i ima ključnih podataka */
+function good(r){
+  if(r.kind==='putovanje')return !!(r.toll&&r.toll.amount&&r.toll.place);
+  if(r.kind==='gorivo')return !!(r.fuel&&r.fuel.qty&&r.fuel.total);
+  return r.items.length>0&&!r.warn.some(w=>/^Zbir/.test(w));
+}
 
-function show(html){$('scanBody').innerHTML=html}
-function prog(txt,p){const m=$('scMsg'),bar=$('scBar');if(m)m.textContent=txt;if(bar&&p!=null)bar.style.width=Math.round(p*100)+'%'}
-
-async function prep(file){
-  const bmp=await createImageBitmap(file);
-  let sc=Math.min(2400/Math.max(bmp.width,bmp.height),1);
-  if(bmp.width*sc<1100)sc=Math.min(1100/bmp.width,2.5);
-  const cv=document.createElement('canvas');cv.width=Math.round(bmp.width*sc);cv.height=Math.round(bmp.height*sc);
-  const ctx=cv.getContext('2d',{willReadFrequently:true});ctx.drawImage(bmp,0,0,cv.width,cv.height);
-  const im=ctx.getImageData(0,0,cv.width,cv.height),d=im.data,h=new Uint32Array(256);
-  for(let i=0;i<d.length;i+=4){const g=(d[i]*.299+d[i+1]*.587+d[i+2]*.114)|0;d[i]=g;h[g]++}
-  const tot=cv.width*cv.height;let lo=0,hi=255,a=0;
-  for(;lo<255&&a+h[lo]<tot*.02;lo++)a+=h[lo];a=0;for(;hi>0&&a+h[hi]<tot*.02;hi--)a+=h[hi];
-  const k=255/Math.max(hi-lo,30);
-  for(let i=0;i<d.length;i+=4){const v=Math.max(0,Math.min(255,((d[i]-lo)*k)|0));d[i]=d[i+1]=d[i+2]=v}
-  ctx.putImageData(im,0,0);return cv;
+async function loadBmp(file){
+  try{return await createImageBitmap(file,{imageOrientation:'from-image'})}catch(e){return await createImageBitmap(file)}
+}
+/* priprema slike: veličina + izravnavanje osvetljenja + kontrast */
+function prep(bmp,minW){
+  let sc=Math.min(2600/Math.max(bmp.width,bmp.height),1);
+  if(bmp.width*sc<minW)sc=Math.min(minW/bmp.width,3.5);
+  else if(bmp.width*sc>minW*1.15)sc=Math.min(sc,minW/bmp.width*1.0);
+  const w=Math.max(200,Math.round(bmp.width*sc)),h=Math.max(200,Math.round(bmp.height*sc));
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  const ctx2=cv.getContext('2d',{willReadFrequently:true});ctx2.imageSmoothingQuality='high';ctx2.drawImage(bmp,0,0,w,h);
+  const im=ctx2.getImageData(0,0,w,h),d=im.data,g=new Uint8Array(w*h);
+  for(let i=0,j=0;i<d.length;i+=4,j++)g[j]=(d[i]*299+d[i+1]*587+d[i+2]*114)/1000;
+  /* lokalna sredina (mala mapa + integralna slika) */
+  const k=4,sw=Math.ceil(w/k),sh=Math.ceil(h/k),sm=new Float32Array(sw*sh),cn=new Uint16Array(sw*sh);
+  for(let y=0;y<h;y++){const o=((y/k)|0)*sw;for(let x=0;x<w;x++){sm[o+((x/k)|0)]+=g[y*w+x];cn[o+((x/k)|0)]++}}
+  for(let i=0;i<sm.length;i++)sm[i]/=cn[i]||1;
+  const W=sw+1,I=new Float64Array(W*(sh+1));
+  for(let y=0;y<sh;y++){let row=0;for(let x=0;x<sw;x++){row+=sm[y*sw+x];I[(y+1)*W+x+1]=I[y*W+x+1]+row}}
+  const R=Math.max(4,Math.round(sw/14)),mm=new Float32Array(sw*sh);
+  for(let y=0;y<sh;y++){const y0=Math.max(0,y-R),y1=Math.min(sh,y+R+1);
+    for(let x=0;x<sw;x++){const x0=Math.max(0,x-R),x1=Math.min(sw,x+R+1);
+      const s=I[y1*W+x1]-I[y0*W+x1]-I[y1*W+x0]+I[y0*W+x0];mm[y*sw+x]=s/((y1-y0)*(x1-x0))}}
+  const out=new Uint8Array(w*h),hist=new Uint32Array(256);
+  for(let y=0;y<h;y++){const o=((y/k)|0)*sw;for(let x=0;x<w;x++){
+    const m=mm[o+((x/k)|0)];let v=g[y*w+x]/(m+1)*255*1.08;v=v>255?255:v<0?0:v;out[y*w+x]=v;hist[v|0]++}}
+  const tot=w*h;let lo=0,hi=255,a=0;
+  for(;lo<255&&a+hist[lo]<tot*.02;lo++)a+=hist[lo];a=0;for(;hi>0&&a+hist[hi]<tot*.02;hi--)a+=hist[hi];
+  const kk=255/Math.max(hi-lo,30);
+  for(let i=0,j=0;j<tot;i+=4,j++){let v=((out[j]-lo)*kk)|0;v=v<0?0:v>255?255:v;d[i]=d[i+1]=d[i+2]=v;d[i+3]=255}
+  ctx2.putImageData(im,0,0);return cv;
 }
 function loadLib(){return new Promise((res,rej)=>{if(window.Tesseract)return res();
   const s=document.createElement('script');s.src=TESS_URL;s.onload=res;s.onerror=()=>rej(new Error('offline'));document.head.appendChild(s)})}
 async function ensureWorker(){
   if(worker)return;
   prog('Učitavam modul za prepoznavanje…',.05);await loadLib();
-  const logger=m=>{if(m.status==='recognizing text')prog('Čitam tekst… '+Math.round(m.progress*100)+'%',.3+m.progress*.7);else prog('Učitavam jezik…',.15)};
-  try{worker=await Tesseract.createWorker(['srp_latn','eng'],1,{logger})}
-  catch(e){worker=await Tesseract.createWorker('eng',1,{logger})}
-  try{await worker.setParameters({tessedit_pageseg_mode:'4',preserve_interword_spaces:'1'})}catch(e){}
+  const logger=m=>{if(m.status==='recognizing text')prog('Čitam tekst… '+Math.round(m.progress*100)+'%',.2+m.progress*.7);else if(/load|init/.test(m.status||''))prog('Učitavam jezike (srpski ćirilica i latinica, prvi put ~10 MB)…',.12)};
+  /* ćirilica + latinica + engleski (za slova W, Y, X u nazivima delova) */
+  for(const langs of [['srp_latn','srp','eng'],['srp_latn','eng'],['eng']]){
+    try{worker=await Tesseract.createWorker(langs,1,{logger});workerLang=langs.join('+');return}catch(e){worker=null}
+  }
+  throw new Error('offline');
+}
+async function recognize(cv,psm){
+  try{await worker.setParameters({tessedit_pageseg_mode:String(psm),preserve_interword_spaces:'1',user_defined_dpi:'300'})}catch(e){}
+  const {data}=await worker.recognize(cv);return data.text;
 }
 
 function row(l,v){return'<div class="scrow"><b>'+l+'</b><span>'+v+'</span></div>'}
+const TL={deo:'Deo',rad:'Rad',usluga:'Usluga'};
 function renderResult(){
   const r=parsed,rec=SCAN.toRecord(r,kind),cur=r.cur;let rows='';
   const money=n=>n?esc(SCAN.fmt(n,cur)):'—';
-  rows+=row('Datum',SCAN.fmtDate(rec.date||todayStr()));
+  rows+=row('Datum',SCAN.fmtDate(rec.date||todayStr())+(kind==='putovanje'&&rec.time?' u '+esc(rec.time):''));
   if(kind==='servis'){
     rows+=row('Servis',esc(rec.title||'—'))+row('Kategorija',esc(rec.cat));
-    rows+=row('Delovi',r.parts.length?'<span class="scparts">'+r.parts.map(p=>'• '+esc(p)).join('<br>')+'</span>':'—');
-    rows+=row('Rad',money(r.labor))+row('Ukupno','<b style="color:var(--txt);font-size:1rem">'+money(r.total)+'</b>');
-    if(r.shop)rows+=row('Servis / lokacija',esc(r.shop));
+    if(rec.km)rows+=row('Kilometraža',esc(String(rec.km)));
+    if(rec.mech)rows+=row('Radnja',esc(rec.mech));
+    rows+=row('Ukupno','<b style="color:var(--txt);font-size:1rem">'+money(r.total)+'</b>');
+    rows+='<div style="margin-top:8px;font-weight:700;font-size:.85rem">Stavke ('+r.items.length+')</div>';
+    rows+=r.items.length?r.items.map(i=>'<div class="scit"><b>['+TL[i.k]+']</b> '+esc(i.name)+(i.fix?' <span class="fix">✱</span>':'')+
+      '<div class="s">'+esc(i.cat)+' · '+esc(String(i.qty).replace('.',','))+' '+(i.k==='rad'?'h':i.k==='usluga'?'usl.':'kom')+' × '+esc(SCAN.fmt(i.price,cur))+' = <b>'+esc(SCAN.fmt(i.total,cur))+'</b></div></div>').join(''):'<div class="muted small" style="padding:6px 0">Stavke nisu prepoznate — dodaj ih u koraku „Proveri i izmeni“.</div>';
+    if(rec.note)rows+='<div class="small muted" style="margin-top:6px;white-space:pre-line">'+esc(rec.note)+'</div>';
   }else if(kind==='gorivo'){
-    rows+=row('Pumpa',esc(rec.station||'—'))+row('Litara',r.liters?esc(String(r.liters).replace('.',',')+' L'):'—')+row('Ukupno',money(r.total));
+    rows+=row('Vrsta goriva',esc(rec.ftype||'—'))+row('Količina',rec.liters?esc(String(rec.liters).replace('.',',')+' '+rec.unit):'—')+
+      row('Cena po '+(rec.unit==='kg'?'kg':'litru'),rec.price?esc(SCAN.fmt(rec.price,cur)):'—')+row('Ukupno',money(rec.cost))+row('Pumpa',esc(rec.station||'—'));
   }else{
-    rows+=row('Relacija',esc(rec.route))+row('Vrsta',esc(rec.type))+row('Iznos',money(r.total));
+    rows+=row('Mesto prolaza',esc(rec.route||'—'))+row('Vreme',esc(rec.time||'—'))+row('Cena',money(rec.amount));
+    if(rec.note)rows+=row('Beleška',esc(rec.note));
   }
-  const needKm=kind==='gorivo';
+  const needKm=kind==='gorivo',warn=r.warn.length?'<div class="scwarn">⚠️ '+r.warn.map(esc).join('<br>⚠️ ')+'</div>':'';
   show('<h3>📷 Prepoznato:</h3>'+
     '<div class="seg" style="margin-bottom:10px">'+Object.keys(KIND_LBL).map(k=>'<button type="button" data-sk="'+k+'" class="'+(k===kind?'on':'')+'">'+KIND_LBL[k]+'</button>').join('')+'</div>'+
-    rows+
-    '<details class="scraw"><summary>Prepoznati tekst sa slike</summary><pre>'+esc(r.raw)+'</pre></details>'+
-    (needKm?'<p class="muted small">Za gorivo je potrebna kilometraža – unosiš je u sledećem koraku.</p>':'')+
-    '<div style="font-weight:700;margin:10px 0">'+(needKm?'Nastaviti?':'Sačuvaj?')+'</div>'+
-    '<div class="row"><button type="button" class="grow" id="scCancel">Otkaži</button><button type="button" class="grow" id="scEdit">✏️ Izmeni</button><button type="button" class="btn-p grow" id="scSave">'+(needKm?'Dalje':'💾 Sačuvaj')+'</button></div>');
-  $('scanBody').querySelectorAll('[data-sk]').forEach(x=>x.onclick=()=>{kind=x.dataset.sk;renderResult()});
+    rows+warn+
+    '<details class="scraw"><summary>Prepoznati tekst sa slike</summary><pre>'+esc(texts.join('\n------\n'))+'</pre></details>'+
+    '<p class="muted small">OCR ume da pogreši cifre. Proveri iznose pre čuvanja — „Proveri i izmeni“ otvara formu sa svim poljima.</p>'+
+    '<div class="row"><button type="button" class="grow" id="scCancel">Otkaži</button><button type="button" class="grow" id="scEdit">✏️ Proveri i izmeni</button>'+(needKm?'':'<button type="button" class="btn-p grow" id="scSave">💾 Sačuvaj</button>')+'</div>');
+  $('scanBody').querySelectorAll('[data-sk]').forEach(x=>x.onclick=()=>{kind=x.dataset.sk;parsed=SCAN.parse(texts[0],kind);renderResult()});
   $('scCancel').onclick=()=>$('scanDlg').close();
   $('scEdit').onclick=()=>toForm();
-  $('scSave').onclick=()=>needKm?toForm():saveNow();
+  if($('scSave'))$('scSave').onclick=()=>saveNow();
 }
 function toForm(){
-  const rec=SCAN.toRecord(parsed,kind);rec._scan=1;if(!rec.date)rec.date=todayStr();
+  const rec=SCAN.toRecord(parsed,kind);rec._scan=1;if(!rec.date)rec.date=todayStr();if(ctx.rem)rec._rem=ctx.rem;
   $('scanDlg').close();openForm(kind,null,rec);
 }
 function saveNow(){
   const v=V(),rec=SCAN.toRecord(parsed,kind);if(!rec.date)rec.date=todayStr();
-  if(kind==='servis'){rec.km=maxKm(v)||'';v.records.push(Object.assign({id:uid()},rec))}
+  if(kind==='servis'){rec.km=rec.km||maxKm(v)||'';v.records.push(Object.assign({id:uid()},rec))}
   else if(kind==='putovanje')v.trips.push(Object.assign({id:uid()},rec));
+  if(ctx.rem){const rr=(v.reminders||[]).find(x=>x.id===ctx.rem);if(rr)rr.done=true}
   save();$('scanDlg').close();go(KIND_TAB[kind]);toast('Sačuvano ✔');
 }
 })();
 </script>
+<div class="coffee-ov" id="coffeeOv" role="dialog" aria-modal="true" aria-labelledby="coffeeT"><div class="coffee-box"><button class="coffee-x" id="coffeeX" aria-label="Zatvori">&times;</button><h3 id="coffeeT">&#9749; Plati mi kafu</h3><p>Ako Vam se dopadaju moje aplikacije i želite da uplatite neki simboličan iznos za kafu ili ručak :D</p><p>Možete donirati na račun:</p><div class="coffee-acc">115000000006810143</div><p><b>Željko Ilić</b><br>Beograd</p><button class="btn-p" id="coffeeCopy" type="button">Kopiraj broj računa</button><div class="coffee-amts"><button type="button" data-a="200" class="">200 RSD</button><button type="button" data-a="500" class="on">500 RSD</button><button type="button" data-a="1000" class="">1000 RSD</button></div><div class="coffee-qr"><div class="coffee-qrv" data-a="200" hidden><svg role="img" aria-label="IPS QR kod 200 RSD" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 49 49" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="M4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM12 4h1v1h-1zM13 4h1v1h-1zM14 4h1v1h-1zM18 4h1v1h-1zM20 4h1v1h-1zM21 4h1v1h-1zM23 4h1v1h-1zM25 4h1v1h-1zM26 4h1v1h-1zM29 4h1v1h-1zM30 4h1v1h-1zM36 4h1v1h-1zM38 4h1v1h-1zM39 4h1v1h-1zM40 4h1v1h-1zM41 4h1v1h-1zM42 4h1v1h-1zM43 4h1v1h-1zM44 4h1v1h-1zM4 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM15 5h1v1h-1zM16 5h1v1h-1zM17 5h1v1h-1zM18 5h1v1h-1zM19 5h1v1h-1zM20 5h1v1h-1zM22 5h1v1h-1zM24 5h1v1h-1zM27 5h1v1h-1zM29 5h1v1h-1zM33 5h1v1h-1zM36 5h1v1h-1zM38 5h1v1h-1zM44 5h1v1h-1zM4 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM13 6h1v1h-1zM15 6h1v1h-1zM17 6h1v1h-1zM18 6h1v1h-1zM19 6h1v1h-1zM21 6h1v1h-1zM23 6h1v1h-1zM28 6h1v1h-1zM32 6h1v1h-1zM34 6h1v1h-1zM38 6h1v1h-1zM40 6h1v1h-1zM41 6h1v1h-1zM42 6h1v1h-1zM44 6h1v1h-1zM4 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM12 7h1v1h-1zM13 7h1v1h-1zM14 7h1v1h-1zM18 7h1v1h-1zM19 7h1v1h-1zM23 7h1v1h-1zM25 7h1v1h-1zM27 7h1v1h-1zM28 7h1v1h-1zM30 7h1v1h-1zM31 7h1v1h-1zM34 7h1v1h-1zM35 7h1v1h-1zM38 7h1v1h-1zM40 7h1v1h-1zM41 7h1v1h-1zM42 7h1v1h-1zM44 7h1v1h-1zM4 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM13 8h1v1h-1zM19 8h1v1h-1zM21 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM27 8h1v1h-1zM28 8h1v1h-1zM29 8h1v1h-1zM30 8h1v1h-1zM31 8h1v1h-1zM32 8h1v1h-1zM33 8h1v1h-1zM38 8h1v1h-1zM40 8h1v1h-1zM41 8h1v1h-1zM42 8h1v1h-1zM44 8h1v1h-1zM4 9h1v1h-1zM10 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM16 9h1v1h-1zM18 9h1v1h-1zM20 9h1v1h-1zM23 9h1v1h-1zM24 9h1v1h-1zM29 9h1v1h-1zM30 9h1v1h-1zM35 9h1v1h-1zM38 9h1v1h-1zM44 9h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM12 10h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM20 10h1v1h-1zM22 10h1v1h-1zM24 10h1v1h-1zM26 10h1v1h-1zM28 10h1v1h-1zM30 10h1v1h-1zM32 10h1v1h-1zM34 10h1v1h-1zM36 10h1v1h-1zM38 10h1v1h-1zM39 10h1v1h-1zM40 10h1v1h-1zM41 10h1v1h-1zM42 10h1v1h-1zM43 10h1v1h-1zM44 10h1v1h-1zM12 11h1v1h-1zM13 11h1v1h-1zM14 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM19 11h1v1h-1zM21 11h1v1h-1zM23 11h1v1h-1zM26 11h1v1h-1zM27 11h1v1h-1zM30 11h1v1h-1zM32 11h1v1h-1zM33 11h1v1h-1zM34 11h1v1h-1zM4 12h1v1h-1zM6 12h1v1h-1zM7 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM11 12h1v1h-1zM13 12h1v1h-1zM15 12h1v1h-1zM16 12h1v1h-1zM18 12h1v1h-1zM19 12h1v1h-1zM21 12h1v1h-1zM23 12h1v1h-1zM24 12h1v1h-1zM25 12h1v1h-1zM26 12h1v1h-1zM28 12h1v1h-1zM29 12h1v1h-1zM30 12h1v1h-1zM33 12h1v1h-1zM34 12h1v1h-1zM36 12h1v1h-1zM38 12h1v1h-1zM41 12h1v1h-1zM43 12h1v1h-1zM44 12h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM6 13h1v1h-1zM8 13h1v1h-1zM11 13h1v1h-1zM13 13h1v1h-1zM14 13h1v1h-1zM17 13h1v1h-1zM19 13h1v1h-1zM20 13h1v1h-1zM21 13h1v1h-1zM23 13h1v1h-1zM26 13h1v1h-1zM27 13h1v1h-1zM28 13h1v1h-1zM29 13h1v1h-1zM30 13h1v1h-1zM32 13h1v1h-1zM33 13h1v1h-1zM35 13h1v1h-1zM37 13h1v1h-1zM38 13h1v1h-1zM39 13h1v1h-1zM40 13h1v1h-1zM42 13h1v1h-1zM43 13h1v1h-1zM7 14h1v1h-1zM8 14h1v1h-1zM10 14h1v1h-1zM11 14h1v1h-1zM12 14h1v1h-1zM17 14h1v1h-1zM19 14h1v1h-1zM20 14h1v1h-1zM21 14h1v1h-1zM22 14h1v1h-1zM24 14h1v1h-1zM27 14h1v1h-1zM28 14h1v1h-1zM32 14h1v1h-1zM34 14h1v1h-1zM36 14h1v1h-1zM41 14h1v1h-1zM43 14h1v1h-1zM4 15h1v1h-1zM5 15h1v1h-1zM7 15h1v1h-1zM8 15h1v1h-1zM11 15h1v1h-1zM14 15h1v1h-1zM15 15h1v1h-1zM17 15h1v1h-1zM18 15h1v1h-1zM19 15h1v1h-1zM20 15h1v1h-1zM22 15h1v1h-1zM23 15h1v1h-1zM29 15h1v1h-1zM32 15h1v1h-1zM35 15h1v1h-1zM37 15h1v1h-1zM38 15h1v1h-1zM41 15h1v1h-1zM4 16h1v1h-1zM7 16h1v1h-1zM9 16h1v1h-1zM10 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM14 16h1v1h-1zM16 16h1v1h-1zM17 16h1v1h-1zM20 16h1v1h-1zM22 16h1v1h-1zM24 16h1v1h-1zM26 16h1v1h-1zM28 16h1v1h-1zM29 16h1v1h-1zM30 16h1v1h-1zM31 16h1v1h-1zM32 16h1v1h-1zM33 16h1v1h-1zM34 16h1v1h-1zM39 16h1v1h-1zM41 16h1v1h-1zM42 16h1v1h-1zM43 16h1v1h-1zM44 16h1v1h-1zM7 17h1v1h-1zM9 17h1v1h-1zM11 17h1v1h-1zM13 17h1v1h-1zM18 17h1v1h-1zM19 17h1v1h-1zM24 17h1v1h-1zM27 17h1v1h-1zM28 17h1v1h-1zM30 17h1v1h-1zM33 17h1v1h-1zM34 17h1v1h-1zM35 17h1v1h-1zM38 17h1v1h-1zM39 17h1v1h-1zM41 17h1v1h-1zM42 17h1v1h-1zM44 17h1v1h-1zM4 18h1v1h-1zM5 18h1v1h-1zM7 18h1v1h-1zM10 18h1v1h-1zM11 18h1v1h-1zM12 18h1v1h-1zM13 18h1v1h-1zM17 18h1v1h-1zM19 18h1v1h-1zM23 18h1v1h-1zM24 18h1v1h-1zM25 18h1v1h-1zM26 18h1v1h-1zM27 18h1v1h-1zM29 18h1v1h-1zM33 18h1v1h-1zM35 18h1v1h-1zM37 18h1v1h-1zM41 18h1v1h-1zM42 18h1v1h-1zM43 18h1v1h-1zM44 18h1v1h-1zM5 19h1v1h-1zM7 19h1v1h-1zM8 19h1v1h-1zM11 19h1v1h-1zM13 19h1v1h-1zM16 19h1v1h-1zM17 19h1v1h-1zM18 19h1v1h-1zM19 19h1v1h-1zM20 19h1v1h-1zM25 19h1v1h-1zM26 19h1v1h-1zM27 19h1v1h-1zM31 19h1v1h-1zM34 19h1v1h-1zM35 19h1v1h-1zM37 19h1v1h-1zM40 19h1v1h-1zM4 20h1v1h-1zM5 20h1v1h-1zM6 20h1v1h-1zM8 20h1v1h-1zM9 20h1v1h-1zM10 20h1v1h-1zM12 20h1v1h-1zM14 20h1v1h-1zM15 20h1v1h-1zM17 20h1v1h-1zM18 20h1v1h-1zM19 20h1v1h-1zM20 20h1v1h-1zM22 20h1v1h-1zM26 20h1v1h-1zM28 20h1v1h-1zM29 20h1v1h-1zM30 20h1v1h-1zM32 20h1v1h-1zM33 20h1v1h-1zM34 20h1v1h-1zM35 20h1v1h-1zM37 20h1v1h-1zM40 20h1v1h-1zM41 20h1v1h-1zM43 20h1v1h-1zM5 21h1v1h-1zM8 21h1v1h-1zM11 21h1v1h-1zM13 21h1v1h-1zM14 21h1v1h-1zM19 21h1v1h-1zM22 21h1v1h-1zM25 21h1v1h-1zM26 21h1v1h-1zM27 21h1v1h-1zM28 21h1v1h-1zM29 21h1v1h-1zM31 21h1v1h-1zM32 21h1v1h-1zM33 21h1v1h-1zM34 21h1v1h-1zM37 21h1v1h-1zM38 21h1v1h-1zM39 21h1v1h-1zM42 21h1v1h-1zM43 21h1v1h-1zM4 22h1v1h-1zM6 22h1v1h-1zM8 22h1v1h-1zM9 22h1v1h-1zM10 22h1v1h-1zM13 22h1v1h-1zM14 22h1v1h-1zM15 22h1v1h-1zM20 22h1v1h-1zM22 22h1v1h-1zM26 22h1v1h-1zM28 22h1v1h-1zM31 22h1v1h-1zM33 22h1v1h-1zM36 22h1v1h-1zM37 22h1v1h-1zM41 22h1v1h-1zM42 22h1v1h-1zM43 22h1v1h-1zM4 23h1v1h-1zM6 23h1v1h-1zM7 23h1v1h-1zM8 23h1v1h-1zM9 23h1v1h-1zM11 23h1v1h-1zM15 23h1v1h-1zM16 23h1v1h-1zM19 23h1v1h-1zM20 23h1v1h-1zM21 23h1v1h-1zM22 23h1v1h-1zM23 23h1v1h-1zM24 23h1v1h-1zM25 23h1v1h-1zM27 23h1v1h-1zM31 23h1v1h-1zM36 23h1v1h-1zM37 23h1v1h-1zM39 23h1v1h-1zM41 23h1v1h-1zM42 23h1v1h-1zM4 24h1v1h-1zM5 24h1v1h-1zM7 24h1v1h-1zM10 24h1v1h-1zM13 24h1v1h-1zM14 24h1v1h-1zM19 24h1v1h-1zM23 24h1v1h-1zM29 24h1v1h-1zM32 24h1v1h-1zM34 24h1v1h-1zM36 24h1v1h-1zM38 24h1v1h-1zM40 24h1v1h-1zM41 24h1v1h-1zM42 24h1v1h-1zM44 24h1v1h-1zM4 25h1v1h-1zM6 25h1v1h-1zM7 25h1v1h-1zM8 25h1v1h-1zM12 25h1v1h-1zM14 25h1v1h-1zM16 25h1v1h-1zM17 25h1v1h-1zM19 25h1v1h-1zM20 25h1v1h-1zM25 25h1v1h-1zM27 25h1v1h-1zM28 25h1v1h-1zM30 25h1v1h-1zM32 25h1v1h-1zM33 25h1v1h-1zM34 25h1v1h-1zM35 25h1v1h-1zM36 25h1v1h-1zM38 25h1v1h-1zM39 25h1v1h-1zM40 25h1v1h-1zM41 25h1v1h-1zM43 25h1v1h-1zM4 26h1v1h-1zM8 26h1v1h-1zM10 26h1v1h-1zM11 26h1v1h-1zM12 26h1v1h-1zM14 26h1v1h-1zM20 26h1v1h-1zM21 26h1v1h-1zM23 26h1v1h-1zM24 26h1v1h-1zM27 26h1v1h-1zM28 26h1v1h-1zM29 26h1v1h-1zM30 26h1v1h-1zM32 26h1v1h-1zM33 26h1v1h-1zM34 26h1v1h-1zM37 26h1v1h-1zM39 26h1v1h-1zM40 26h1v1h-1zM42 26h1v1h-1zM43 26h1v1h-1zM5 27h1v1h-1zM7 27h1v1h-1zM8 27h1v1h-1zM9 27h1v1h-1zM15 27h1v1h-1zM16 27h1v1h-1zM17 27h1v1h-1zM20 27h1v1h-1zM23 27h1v1h-1zM24 27h1v1h-1zM26 27h1v1h-1zM27 27h1v1h-1zM28 27h1v1h-1zM29 27h1v1h-1zM38 27h1v1h-1zM39 27h1v1h-1zM40 27h1v1h-1zM43 27h1v1h-1zM44 27h1v1h-1zM4 28h1v1h-1zM7 28h1v1h-1zM9 28h1v1h-1zM10 28h1v1h-1zM17 28h1v1h-1zM19 28h1v1h-1zM20 28h1v1h-1zM21 28h1v1h-1zM22 28h1v1h-1zM24 28h1v1h-1zM27 28h1v1h-1zM29 28h1v1h-1zM32 28h1v1h-1zM36 28h1v1h-1zM42 28h1v1h-1zM43 28h1v1h-1zM44 28h1v1h-1zM4 29h1v1h-1zM5 29h1v1h-1zM6 29h1v1h-1zM12 29h1v1h-1zM13 29h1v1h-1zM14 29h1v1h-1zM16 29h1v1h-1zM22 29h1v1h-1zM23 29h1v1h-1zM24 29h1v1h-1zM25 29h1v1h-1zM26 29h1v1h-1zM29 29h1v1h-1zM31 29h1v1h-1zM35 29h1v1h-1zM36 29h1v1h-1zM37 29h1v1h-1zM38 29h1v1h-1zM43 29h1v1h-1zM44 29h1v1h-1zM6 30h1v1h-1zM8 30h1v1h-1zM9 30h1v1h-1zM10 30h1v1h-1zM12 30h1v1h-1zM13 30h1v1h-1zM14 30h1v1h-1zM15 30h1v1h-1zM18 30h1v1h-1zM19 30h1v1h-1zM20 30h1v1h-1zM21 30h1v1h-1zM23 30h1v1h-1zM28 30h1v1h-1zM32 30h1v1h-1zM33 30h1v1h-1zM35 30h1v1h-1zM38 30h1v1h-1zM40 30h1v1h-1zM41 30h1v1h-1zM42 30h1v1h-1zM44 30h1v1h-1zM5 31h1v1h-1zM9 31h1v1h-1zM11 31h1v1h-1zM12 31h1v1h-1zM15 31h1v1h-1zM17 31h1v1h-1zM22 31h1v1h-1zM25 31h1v1h-1zM28 31h1v1h-1zM33 31h1v1h-1zM34 31h1v1h-1zM35 31h1v1h-1zM38 31h1v1h-1zM40 31h1v1h-1zM41 31h1v1h-1zM44 31h1v1h-1zM4 32h1v1h-1zM5 32h1v1h-1zM8 32h1v1h-1zM10 32h1v1h-1zM11 32h1v1h-1zM13 32h1v1h-1zM14 32h1v1h-1zM15 32h1v1h-1zM16 32h1v1h-1zM17 32h1v1h-1zM21 32h1v1h-1zM22 32h1v1h-1zM24 32h1v1h-1zM25 32h1v1h-1zM26 32h1v1h-1zM27 32h1v1h-1zM28 32h1v1h-1zM29 32h1v1h-1zM31 32h1v1h-1zM33 32h1v1h-1zM34 32h1v1h-1zM35 32h1v1h-1zM36 32h1v1h-1zM37 32h1v1h-1zM40 32h1v1h-1zM41 32h1v1h-1zM42 32h1v1h-1zM5 33h1v1h-1zM6 33h1v1h-1zM9 33h1v1h-1zM11 33h1v1h-1zM15 33h1v1h-1zM16 33h1v1h-1zM17 33h1v1h-1zM21 33h1v1h-1zM23 33h1v1h-1zM24 33h1v1h-1zM26 33h1v1h-1zM36 33h1v1h-1zM41 33h1v1h-1zM42 33h1v1h-1zM4 34h1v1h-1zM6 34h1v1h-1zM7 34h1v1h-1zM9 34h1v1h-1zM10 34h1v1h-1zM11 34h1v1h-1zM12 34h1v1h-1zM15 34h1v1h-1zM16 34h1v1h-1zM17 34h1v1h-1zM23 34h1v1h-1zM26 34h1v1h-1zM30 34h1v1h-1zM33 34h1v1h-1zM34 34h1v1h-1zM36 34h1v1h-1zM39 34h1v1h-1zM40 34h1v1h-1zM6 35h1v1h-1zM7 35h1v1h-1zM8 35h1v1h-1zM9 35h1v1h-1zM13 35h1v1h-1zM16 35h1v1h-1zM18 35h1v1h-1zM19 35h1v1h-1zM21 35h1v1h-1zM23 35h1v1h-1zM27 35h1v1h-1zM30 35h1v1h-1zM31 35h1v1h-1zM32 35h1v1h-1zM33 35h1v1h-1zM34 35h1v1h-1zM36 35h1v1h-1zM38 35h1v1h-1zM39 35h1v1h-1zM42 35h1v1h-1zM44 35h1v1h-1zM5 36h1v1h-1zM7 36h1v1h-1zM9 36h1v1h-1zM10 36h1v1h-1zM12 36h1v1h-1zM13 36h1v1h-1zM14 36h1v1h-1zM15 36h1v1h-1zM20 36h1v1h-1zM22 36h1v1h-1zM24 36h1v1h-1zM25 36h1v1h-1zM26 36h1v1h-1zM28 36h1v1h-1zM31 36h1v1h-1zM34 36h1v1h-1zM36 36h1v1h-1zM37 36h1v1h-1zM38 36h1v1h-1zM39 36h1v1h-1zM40 36h1v1h-1zM42 36h1v1h-1zM44 36h1v1h-1zM12 37h1v1h-1zM17 37h1v1h-1zM20 37h1v1h-1zM21 37h1v1h-1zM23 37h1v1h-1zM25 37h1v1h-1zM26 37h1v1h-1zM27 37h1v1h-1zM28 37h1v1h-1zM29 37h1v1h-1zM30 37h1v1h-1zM34 37h1v1h-1zM36 37h1v1h-1zM40 37h1v1h-1zM41 37h1v1h-1zM44 37h1v1h-1zM4 38h1v1h-1zM5 38h1v1h-1zM6 38h1v1h-1zM7 38h1v1h-1zM8 38h1v1h-1zM9 38h1v1h-1zM10 38h1v1h-1zM12 38h1v1h-1zM16 38h1v1h-1zM20 38h1v1h-1zM22 38h1v1h-1zM24 38h1v1h-1zM27 38h1v1h-1zM29 38h1v1h-1zM33 38h1v1h-1zM36 38h1v1h-1zM38 38h1v1h-1zM40 38h1v1h-1zM41 38h1v1h-1zM4 39h1v1h-1zM10 39h1v1h-1zM12 39h1v1h-1zM15 39h1v1h-1zM16 39h1v1h-1zM18 39h1v1h-1zM21 39h1v1h-1zM34 39h1v1h-1zM36 39h1v1h-1zM40 39h1v1h-1zM44 39h1v1h-1zM4 40h1v1h-1zM6 40h1v1h-1zM7 40h1v1h-1zM8 40h1v1h-1zM10 40h1v1h-1zM13 40h1v1h-1zM18 40h1v1h-1zM19 40h1v1h-1zM20 40h1v1h-1zM23 40h1v1h-1zM25 40h1v1h-1zM28 40h1v1h-1zM30 40h1v1h-1zM31 40h1v1h-1zM32 40h1v1h-1zM34 40h1v1h-1zM36 40h1v1h-1zM37 40h1v1h-1zM38 40h1v1h-1zM39 40h1v1h-1zM40 40h1v1h-1zM41 40h1v1h-1zM42 40h1v1h-1zM43 40h1v1h-1zM4 41h1v1h-1zM6 41h1v1h-1zM7 41h1v1h-1zM8 41h1v1h-1zM10 41h1v1h-1zM12 41h1v1h-1zM13 41h1v1h-1zM14 41h1v1h-1zM15 41h1v1h-1zM18 41h1v1h-1zM20 41h1v1h-1zM21 41h1v1h-1zM26 41h1v1h-1zM28 41h1v1h-1zM29 41h1v1h-1zM30 41h1v1h-1zM31 41h1v1h-1zM33 41h1v1h-1zM34 41h1v1h-1zM36 41h1v1h-1zM41 41h1v1h-1zM43 41h1v1h-1zM4 42h1v1h-1zM6 42h1v1h-1zM7 42h1v1h-1zM8 42h1v1h-1zM10 42h1v1h-1zM12 42h1v1h-1zM13 42h1v1h-1zM15 42h1v1h-1zM18 42h1v1h-1zM20 42h1v1h-1zM22 42h1v1h-1zM24 42h1v1h-1zM26 42h1v1h-1zM28 42h1v1h-1zM31 42h1v1h-1zM33 42h1v1h-1zM36 42h1v1h-1zM37 42h1v1h-1zM39 42h1v1h-1zM42 42h1v1h-1zM43 42h1v1h-1zM44 42h1v1h-1zM4 43h1v1h-1zM10 43h1v1h-1zM14 43h1v1h-1zM15 43h1v1h-1zM19 43h1v1h-1zM21 43h1v1h-1zM22 43h1v1h-1zM25 43h1v1h-1zM27 43h1v1h-1zM28 43h1v1h-1zM31 43h1v1h-1zM32 43h1v1h-1zM35 43h1v1h-1zM36 43h1v1h-1zM40 43h1v1h-1zM41 43h1v1h-1zM43 43h1v1h-1zM4 44h1v1h-1zM5 44h1v1h-1zM6 44h1v1h-1zM7 44h1v1h-1zM8 44h1v1h-1zM9 44h1v1h-1zM10 44h1v1h-1zM12 44h1v1h-1zM14 44h1v1h-1zM15 44h1v1h-1zM17 44h1v1h-1zM18 44h1v1h-1zM19 44h1v1h-1zM23 44h1v1h-1zM25 44h1v1h-1zM28 44h1v1h-1zM29 44h1v1h-1zM30 44h1v1h-1zM32 44h1v1h-1zM36 44h1v1h-1zM39 44h1v1h-1zM43 44h1v1h-1z"/></svg></div><div class="coffee-qrv" data-a="500"><svg role="img" aria-label="IPS QR kod 500 RSD" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 49 49" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="M4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM12 4h1v1h-1zM13 4h1v1h-1zM14 4h1v1h-1zM15 4h1v1h-1zM16 4h1v1h-1zM18 4h1v1h-1zM19 4h1v1h-1zM20 4h1v1h-1zM21 4h1v1h-1zM23 4h1v1h-1zM25 4h1v1h-1zM26 4h1v1h-1zM29 4h1v1h-1zM30 4h1v1h-1zM36 4h1v1h-1zM38 4h1v1h-1zM39 4h1v1h-1zM40 4h1v1h-1zM41 4h1v1h-1zM42 4h1v1h-1zM43 4h1v1h-1zM44 4h1v1h-1zM4 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM15 5h1v1h-1zM16 5h1v1h-1zM17 5h1v1h-1zM18 5h1v1h-1zM20 5h1v1h-1zM22 5h1v1h-1zM24 5h1v1h-1zM27 5h1v1h-1zM29 5h1v1h-1zM33 5h1v1h-1zM36 5h1v1h-1zM38 5h1v1h-1zM44 5h1v1h-1zM4 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM13 6h1v1h-1zM15 6h1v1h-1zM16 6h1v1h-1zM17 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM21 6h1v1h-1zM23 6h1v1h-1zM28 6h1v1h-1zM32 6h1v1h-1zM34 6h1v1h-1zM38 6h1v1h-1zM40 6h1v1h-1zM41 6h1v1h-1zM42 6h1v1h-1zM44 6h1v1h-1zM4 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM12 7h1v1h-1zM13 7h1v1h-1zM14 7h1v1h-1zM18 7h1v1h-1zM19 7h1v1h-1zM23 7h1v1h-1zM25 7h1v1h-1zM27 7h1v1h-1zM28 7h1v1h-1zM30 7h1v1h-1zM31 7h1v1h-1zM34 7h1v1h-1zM35 7h1v1h-1zM38 7h1v1h-1zM40 7h1v1h-1zM41 7h1v1h-1zM42 7h1v1h-1zM44 7h1v1h-1zM4 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM13 8h1v1h-1zM19 8h1v1h-1zM21 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM27 8h1v1h-1zM28 8h1v1h-1zM29 8h1v1h-1zM30 8h1v1h-1zM31 8h1v1h-1zM32 8h1v1h-1zM33 8h1v1h-1zM38 8h1v1h-1zM40 8h1v1h-1zM41 8h1v1h-1zM42 8h1v1h-1zM44 8h1v1h-1zM4 9h1v1h-1zM10 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM16 9h1v1h-1zM18 9h1v1h-1zM20 9h1v1h-1zM23 9h1v1h-1zM24 9h1v1h-1zM29 9h1v1h-1zM30 9h1v1h-1zM35 9h1v1h-1zM38 9h1v1h-1zM44 9h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM12 10h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM20 10h1v1h-1zM22 10h1v1h-1zM24 10h1v1h-1zM26 10h1v1h-1zM28 10h1v1h-1zM30 10h1v1h-1zM32 10h1v1h-1zM34 10h1v1h-1zM36 10h1v1h-1zM38 10h1v1h-1zM39 10h1v1h-1zM40 10h1v1h-1zM41 10h1v1h-1zM42 10h1v1h-1zM43 10h1v1h-1zM44 10h1v1h-1zM12 11h1v1h-1zM13 11h1v1h-1zM14 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM19 11h1v1h-1zM21 11h1v1h-1zM23 11h1v1h-1zM26 11h1v1h-1zM27 11h1v1h-1zM30 11h1v1h-1zM32 11h1v1h-1zM33 11h1v1h-1zM34 11h1v1h-1zM4 12h1v1h-1zM6 12h1v1h-1zM7 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM11 12h1v1h-1zM13 12h1v1h-1zM15 12h1v1h-1zM16 12h1v1h-1zM18 12h1v1h-1zM19 12h1v1h-1zM21 12h1v1h-1zM23 12h1v1h-1zM24 12h1v1h-1zM25 12h1v1h-1zM26 12h1v1h-1zM28 12h1v1h-1zM29 12h1v1h-1zM30 12h1v1h-1zM33 12h1v1h-1zM34 12h1v1h-1zM36 12h1v1h-1zM38 12h1v1h-1zM41 12h1v1h-1zM43 12h1v1h-1zM44 12h1v1h-1zM4 13h1v1h-1zM7 13h1v1h-1zM8 13h1v1h-1zM9 13h1v1h-1zM11 13h1v1h-1zM12 13h1v1h-1zM13 13h1v1h-1zM14 13h1v1h-1zM17 13h1v1h-1zM19 13h1v1h-1zM20 13h1v1h-1zM21 13h1v1h-1zM23 13h1v1h-1zM26 13h1v1h-1zM27 13h1v1h-1zM28 13h1v1h-1zM29 13h1v1h-1zM30 13h1v1h-1zM32 13h1v1h-1zM33 13h1v1h-1zM35 13h1v1h-1zM37 13h1v1h-1zM38 13h1v1h-1zM39 13h1v1h-1zM40 13h1v1h-1zM42 13h1v1h-1zM43 13h1v1h-1zM6 14h1v1h-1zM8 14h1v1h-1zM10 14h1v1h-1zM11 14h1v1h-1zM17 14h1v1h-1zM19 14h1v1h-1zM20 14h1v1h-1zM21 14h1v1h-1zM22 14h1v1h-1zM24 14h1v1h-1zM27 14h1v1h-1zM28 14h1v1h-1zM32 14h1v1h-1zM34 14h1v1h-1zM36 14h1v1h-1zM41 14h1v1h-1zM43 14h1v1h-1zM4 15h1v1h-1zM5 15h1v1h-1zM6 15h1v1h-1zM8 15h1v1h-1zM11 15h1v1h-1zM12 15h1v1h-1zM14 15h1v1h-1zM15 15h1v1h-1zM17 15h1v1h-1zM18 15h1v1h-1zM19 15h1v1h-1zM20 15h1v1h-1zM22 15h1v1h-1zM23 15h1v1h-1zM29 15h1v1h-1zM32 15h1v1h-1zM35 15h1v1h-1zM37 15h1v1h-1zM38 15h1v1h-1zM41 15h1v1h-1zM4 16h1v1h-1zM6 16h1v1h-1zM7 16h1v1h-1zM9 16h1v1h-1zM10 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM14 16h1v1h-1zM16 16h1v1h-1zM17 16h1v1h-1zM20 16h1v1h-1zM22 16h1v1h-1zM24 16h1v1h-1zM26 16h1v1h-1zM28 16h1v1h-1zM29 16h1v1h-1zM30 16h1v1h-1zM31 16h1v1h-1zM32 16h1v1h-1zM33 16h1v1h-1zM34 16h1v1h-1zM39 16h1v1h-1zM41 16h1v1h-1zM42 16h1v1h-1zM43 16h1v1h-1zM44 16h1v1h-1zM7 17h1v1h-1zM9 17h1v1h-1zM11 17h1v1h-1zM17 17h1v1h-1zM18 17h1v1h-1zM19 17h1v1h-1zM24 17h1v1h-1zM27 17h1v1h-1zM28 17h1v1h-1zM30 17h1v1h-1zM33 17h1v1h-1zM34 17h1v1h-1zM35 17h1v1h-1zM38 17h1v1h-1zM39 17h1v1h-1zM41 17h1v1h-1zM42 17h1v1h-1zM44 17h1v1h-1zM4 18h1v1h-1zM5 18h1v1h-1zM7 18h1v1h-1zM10 18h1v1h-1zM11 18h1v1h-1zM12 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM19 18h1v1h-1zM23 18h1v1h-1zM24 18h1v1h-1zM25 18h1v1h-1zM26 18h1v1h-1zM27 18h1v1h-1zM29 18h1v1h-1zM33 18h1v1h-1zM35 18h1v1h-1zM37 18h1v1h-1zM41 18h1v1h-1zM42 18h1v1h-1zM43 18h1v1h-1zM44 18h1v1h-1zM5 19h1v1h-1zM7 19h1v1h-1zM8 19h1v1h-1zM11 19h1v1h-1zM13 19h1v1h-1zM14 19h1v1h-1zM16 19h1v1h-1zM19 19h1v1h-1zM20 19h1v1h-1zM25 19h1v1h-1zM26 19h1v1h-1zM27 19h1v1h-1zM31 19h1v1h-1zM34 19h1v1h-1zM35 19h1v1h-1zM37 19h1v1h-1zM40 19h1v1h-1zM4 20h1v1h-1zM5 20h1v1h-1zM6 20h1v1h-1zM8 20h1v1h-1zM9 20h1v1h-1zM10 20h1v1h-1zM12 20h1v1h-1zM14 20h1v1h-1zM15 20h1v1h-1zM17 20h1v1h-1zM18 20h1v1h-1zM19 20h1v1h-1zM22 20h1v1h-1zM26 20h1v1h-1zM28 20h1v1h-1zM29 20h1v1h-1zM30 20h1v1h-1zM32 20h1v1h-1zM33 20h1v1h-1zM34 20h1v1h-1zM35 20h1v1h-1zM37 20h1v1h-1zM40 20h1v1h-1zM41 20h1v1h-1zM43 20h1v1h-1zM5 21h1v1h-1zM8 21h1v1h-1zM11 21h1v1h-1zM13 21h1v1h-1zM15 21h1v1h-1zM19 21h1v1h-1zM20 21h1v1h-1zM22 21h1v1h-1zM25 21h1v1h-1zM26 21h1v1h-1zM27 21h1v1h-1zM28 21h1v1h-1zM29 21h1v1h-1zM31 21h1v1h-1zM32 21h1v1h-1zM33 21h1v1h-1zM34 21h1v1h-1zM37 21h1v1h-1zM38 21h1v1h-1zM39 21h1v1h-1zM42 21h1v1h-1zM43 21h1v1h-1zM4 22h1v1h-1zM6 22h1v1h-1zM8 22h1v1h-1zM9 22h1v1h-1zM10 22h1v1h-1zM13 22h1v1h-1zM14 22h1v1h-1zM15 22h1v1h-1zM22 22h1v1h-1zM26 22h1v1h-1zM28 22h1v1h-1zM31 22h1v1h-1zM32 22h1v1h-1zM33 22h1v1h-1zM36 22h1v1h-1zM37 22h1v1h-1zM41 22h1v1h-1zM42 22h1v1h-1zM43 22h1v1h-1zM4 23h1v1h-1zM6 23h1v1h-1zM7 23h1v1h-1zM8 23h1v1h-1zM9 23h1v1h-1zM11 23h1v1h-1zM15 23h1v1h-1zM16 23h1v1h-1zM21 23h1v1h-1zM22 23h1v1h-1zM23 23h1v1h-1zM24 23h1v1h-1zM25 23h1v1h-1zM27 23h1v1h-1zM32 23h1v1h-1zM36 23h1v1h-1zM37 23h1v1h-1zM39 23h1v1h-1zM41 23h1v1h-1zM42 23h1v1h-1zM4 24h1v1h-1zM5 24h1v1h-1zM7 24h1v1h-1zM10 24h1v1h-1zM13 24h1v1h-1zM14 24h1v1h-1zM23 24h1v1h-1zM29 24h1v1h-1zM32 24h1v1h-1zM34 24h1v1h-1zM36 24h1v1h-1zM38 24h1v1h-1zM40 24h1v1h-1zM41 24h1v1h-1zM42 24h1v1h-1zM44 24h1v1h-1zM4 25h1v1h-1zM6 25h1v1h-1zM7 25h1v1h-1zM8 25h1v1h-1zM12 25h1v1h-1zM14 25h1v1h-1zM16 25h1v1h-1zM17 25h1v1h-1zM19 25h1v1h-1zM20 25h1v1h-1zM25 25h1v1h-1zM27 25h1v1h-1zM28 25h1v1h-1zM30 25h1v1h-1zM32 25h1v1h-1zM33 25h1v1h-1zM34 25h1v1h-1zM35 25h1v1h-1zM36 25h1v1h-1zM38 25h1v1h-1zM39 25h1v1h-1zM40 25h1v1h-1zM41 25h1v1h-1zM43 25h1v1h-1zM8 26h1v1h-1zM10 26h1v1h-1zM11 26h1v1h-1zM12 26h1v1h-1zM14 26h1v1h-1zM20 26h1v1h-1zM21 26h1v1h-1zM23 26h1v1h-1zM24 26h1v1h-1zM27 26h1v1h-1zM28 26h1v1h-1zM29 26h1v1h-1zM30 26h1v1h-1zM32 26h1v1h-1zM33 26h1v1h-1zM34 26h1v1h-1zM37 26h1v1h-1zM39 26h1v1h-1zM40 26h1v1h-1zM42 26h1v1h-1zM43 26h1v1h-1zM7 27h1v1h-1zM15 27h1v1h-1zM16 27h1v1h-1zM17 27h1v1h-1zM20 27h1v1h-1zM23 27h1v1h-1zM24 27h1v1h-1zM26 27h1v1h-1zM27 27h1v1h-1zM28 27h1v1h-1zM29 27h1v1h-1zM38 27h1v1h-1zM39 27h1v1h-1zM40 27h1v1h-1zM43 27h1v1h-1zM44 27h1v1h-1zM9 28h1v1h-1zM10 28h1v1h-1zM12 28h1v1h-1zM17 28h1v1h-1zM19 28h1v1h-1zM20 28h1v1h-1zM21 28h1v1h-1zM22 28h1v1h-1zM24 28h1v1h-1zM27 28h1v1h-1zM29 28h1v1h-1zM32 28h1v1h-1zM36 28h1v1h-1zM42 28h1v1h-1zM43 28h1v1h-1zM44 28h1v1h-1zM4 29h1v1h-1zM5 29h1v1h-1zM6 29h1v1h-1zM7 29h1v1h-1zM9 29h1v1h-1zM11 29h1v1h-1zM12 29h1v1h-1zM13 29h1v1h-1zM14 29h1v1h-1zM16 29h1v1h-1zM22 29h1v1h-1zM23 29h1v1h-1zM24 29h1v1h-1zM25 29h1v1h-1zM26 29h1v1h-1zM29 29h1v1h-1zM31 29h1v1h-1zM35 29h1v1h-1zM36 29h1v1h-1zM37 29h1v1h-1zM38 29h1v1h-1zM43 29h1v1h-1zM44 29h1v1h-1zM6 30h1v1h-1zM8 30h1v1h-1zM9 30h1v1h-1zM10 30h1v1h-1zM11 30h1v1h-1zM13 30h1v1h-1zM14 30h1v1h-1zM15 30h1v1h-1zM18 30h1v1h-1zM19 30h1v1h-1zM20 30h1v1h-1zM21 30h1v1h-1zM23 30h1v1h-1zM28 30h1v1h-1zM32 30h1v1h-1zM33 30h1v1h-1zM35 30h1v1h-1zM38 30h1v1h-1zM40 30h1v1h-1zM41 30h1v1h-1zM42 30h1v1h-1zM44 30h1v1h-1zM5 31h1v1h-1zM6 31h1v1h-1zM7 31h1v1h-1zM9 31h1v1h-1zM11 31h1v1h-1zM12 31h1v1h-1zM15 31h1v1h-1zM17 31h1v1h-1zM22 31h1v1h-1zM25 31h1v1h-1zM28 31h1v1h-1zM33 31h1v1h-1zM34 31h1v1h-1zM35 31h1v1h-1zM38 31h1v1h-1zM40 31h1v1h-1zM41 31h1v1h-1zM44 31h1v1h-1zM4 32h1v1h-1zM5 32h1v1h-1zM6 32h1v1h-1zM8 32h1v1h-1zM10 32h1v1h-1zM11 32h1v1h-1zM13 32h1v1h-1zM14 32h1v1h-1zM15 32h1v1h-1zM16 32h1v1h-1zM17 32h1v1h-1zM21 32h1v1h-1zM22 32h1v1h-1zM24 32h1v1h-1zM25 32h1v1h-1zM26 32h1v1h-1zM27 32h1v1h-1zM28 32h1v1h-1zM29 32h1v1h-1zM31 32h1v1h-1zM33 32h1v1h-1zM34 32h1v1h-1zM35 32h1v1h-1zM36 32h1v1h-1zM37 32h1v1h-1zM40 32h1v1h-1zM41 32h1v1h-1zM42 32h1v1h-1zM5 33h1v1h-1zM6 33h1v1h-1zM9 33h1v1h-1zM11 33h1v1h-1zM15 33h1v1h-1zM16 33h1v1h-1zM17 33h1v1h-1zM21 33h1v1h-1zM23 33h1v1h-1zM24 33h1v1h-1zM26 33h1v1h-1zM36 33h1v1h-1zM41 33h1v1h-1zM42 33h1v1h-1zM4 34h1v1h-1zM6 34h1v1h-1zM7 34h1v1h-1zM9 34h1v1h-1zM10 34h1v1h-1zM11 34h1v1h-1zM12 34h1v1h-1zM13 34h1v1h-1zM14 34h1v1h-1zM15 34h1v1h-1zM16 34h1v1h-1zM18 34h1v1h-1zM23 34h1v1h-1zM26 34h1v1h-1zM30 34h1v1h-1zM33 34h1v1h-1zM34 34h1v1h-1zM36 34h1v1h-1zM39 34h1v1h-1zM40 34h1v1h-1zM6 35h1v1h-1zM7 35h1v1h-1zM8 35h1v1h-1zM9 35h1v1h-1zM13 35h1v1h-1zM16 35h1v1h-1zM18 35h1v1h-1zM19 35h1v1h-1zM21 35h1v1h-1zM23 35h1v1h-1zM27 35h1v1h-1zM30 35h1v1h-1zM31 35h1v1h-1zM32 35h1v1h-1zM33 35h1v1h-1zM34 35h1v1h-1zM36 35h1v1h-1zM38 35h1v1h-1zM39 35h1v1h-1zM42 35h1v1h-1zM44 35h1v1h-1zM5 36h1v1h-1zM7 36h1v1h-1zM9 36h1v1h-1zM10 36h1v1h-1zM12 36h1v1h-1zM15 36h1v1h-1zM17 36h1v1h-1zM18 36h1v1h-1zM20 36h1v1h-1zM22 36h1v1h-1zM24 36h1v1h-1zM25 36h1v1h-1zM26 36h1v1h-1zM28 36h1v1h-1zM31 36h1v1h-1zM34 36h1v1h-1zM36 36h1v1h-1zM37 36h1v1h-1zM38 36h1v1h-1zM39 36h1v1h-1zM40 36h1v1h-1zM42 36h1v1h-1zM44 36h1v1h-1zM12 37h1v1h-1zM16 37h1v1h-1zM17 37h1v1h-1zM18 37h1v1h-1zM20 37h1v1h-1zM21 37h1v1h-1zM23 37h1v1h-1zM25 37h1v1h-1zM26 37h1v1h-1zM27 37h1v1h-1zM28 37h1v1h-1zM29 37h1v1h-1zM30 37h1v1h-1zM34 37h1v1h-1zM36 37h1v1h-1zM40 37h1v1h-1zM41 37h1v1h-1zM44 37h1v1h-1zM4 38h1v1h-1zM5 38h1v1h-1zM6 38h1v1h-1zM7 38h1v1h-1zM8 38h1v1h-1zM9 38h1v1h-1zM10 38h1v1h-1zM12 38h1v1h-1zM15 38h1v1h-1zM20 38h1v1h-1zM22 38h1v1h-1zM24 38h1v1h-1zM27 38h1v1h-1zM29 38h1v1h-1zM33 38h1v1h-1zM36 38h1v1h-1zM38 38h1v1h-1zM40 38h1v1h-1zM41 38h1v1h-1zM4 39h1v1h-1zM10 39h1v1h-1zM12 39h1v1h-1zM18 39h1v1h-1zM20 39h1v1h-1zM21 39h1v1h-1zM34 39h1v1h-1zM36 39h1v1h-1zM40 39h1v1h-1zM44 39h1v1h-1zM4 40h1v1h-1zM6 40h1v1h-1zM7 40h1v1h-1zM8 40h1v1h-1zM10 40h1v1h-1zM13 40h1v1h-1zM18 40h1v1h-1zM20 40h1v1h-1zM23 40h1v1h-1zM25 40h1v1h-1zM28 40h1v1h-1zM30 40h1v1h-1zM31 40h1v1h-1zM32 40h1v1h-1zM34 40h1v1h-1zM36 40h1v1h-1zM37 40h1v1h-1zM38 40h1v1h-1zM39 40h1v1h-1zM40 40h1v1h-1zM41 40h1v1h-1zM42 40h1v1h-1zM43 40h1v1h-1zM4 41h1v1h-1zM6 41h1v1h-1zM7 41h1v1h-1zM8 41h1v1h-1zM10 41h1v1h-1zM12 41h1v1h-1zM13 41h1v1h-1zM14 41h1v1h-1zM15 41h1v1h-1zM18 41h1v1h-1zM20 41h1v1h-1zM21 41h1v1h-1zM26 41h1v1h-1zM28 41h1v1h-1zM29 41h1v1h-1zM30 41h1v1h-1zM31 41h1v1h-1zM33 41h1v1h-1zM34 41h1v1h-1zM36 41h1v1h-1zM41 41h1v1h-1zM43 41h1v1h-1zM4 42h1v1h-1zM6 42h1v1h-1zM7 42h1v1h-1zM8 42h1v1h-1zM10 42h1v1h-1zM12 42h1v1h-1zM13 42h1v1h-1zM15 42h1v1h-1zM18 42h1v1h-1zM20 42h1v1h-1zM22 42h1v1h-1zM24 42h1v1h-1zM26 42h1v1h-1zM28 42h1v1h-1zM31 42h1v1h-1zM33 42h1v1h-1zM36 42h1v1h-1zM37 42h1v1h-1zM39 42h1v1h-1zM42 42h1v1h-1zM43 42h1v1h-1zM44 42h1v1h-1zM4 43h1v1h-1zM10 43h1v1h-1zM14 43h1v1h-1zM15 43h1v1h-1zM19 43h1v1h-1zM21 43h1v1h-1zM22 43h1v1h-1zM25 43h1v1h-1zM27 43h1v1h-1zM28 43h1v1h-1zM31 43h1v1h-1zM32 43h1v1h-1zM35 43h1v1h-1zM36 43h1v1h-1zM40 43h1v1h-1zM41 43h1v1h-1zM43 43h1v1h-1zM4 44h1v1h-1zM5 44h1v1h-1zM6 44h1v1h-1zM7 44h1v1h-1zM8 44h1v1h-1zM9 44h1v1h-1zM10 44h1v1h-1zM12 44h1v1h-1zM14 44h1v1h-1zM15 44h1v1h-1zM17 44h1v1h-1zM18 44h1v1h-1zM19 44h1v1h-1zM23 44h1v1h-1zM25 44h1v1h-1zM28 44h1v1h-1zM29 44h1v1h-1zM30 44h1v1h-1zM32 44h1v1h-1zM36 44h1v1h-1zM39 44h1v1h-1zM43 44h1v1h-1z"/></svg></div><div class="coffee-qrv" data-a="1000" hidden><svg role="img" aria-label="IPS QR kod 1000 RSD" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 49 49" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="M4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM13 4h1v1h-1zM14 4h1v1h-1zM15 4h1v1h-1zM18 4h1v1h-1zM19 4h1v1h-1zM21 4h1v1h-1zM24 4h1v1h-1zM29 4h1v1h-1zM32 4h1v1h-1zM35 4h1v1h-1zM38 4h1v1h-1zM39 4h1v1h-1zM40 4h1v1h-1zM41 4h1v1h-1zM42 4h1v1h-1zM43 4h1v1h-1zM44 4h1v1h-1zM4 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM15 5h1v1h-1zM20 5h1v1h-1zM22 5h1v1h-1zM25 5h1v1h-1zM26 5h1v1h-1zM28 5h1v1h-1zM33 5h1v1h-1zM34 5h1v1h-1zM38 5h1v1h-1zM44 5h1v1h-1zM4 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM13 6h1v1h-1zM14 6h1v1h-1zM15 6h1v1h-1zM17 6h1v1h-1zM19 6h1v1h-1zM23 6h1v1h-1zM28 6h1v1h-1zM30 6h1v1h-1zM31 6h1v1h-1zM34 6h1v1h-1zM35 6h1v1h-1zM38 6h1v1h-1zM40 6h1v1h-1zM41 6h1v1h-1zM42 6h1v1h-1zM44 6h1v1h-1zM4 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM12 7h1v1h-1zM13 7h1v1h-1zM17 7h1v1h-1zM19 7h1v1h-1zM20 7h1v1h-1zM22 7h1v1h-1zM24 7h1v1h-1zM28 7h1v1h-1zM30 7h1v1h-1zM32 7h1v1h-1zM33 7h1v1h-1zM35 7h1v1h-1zM36 7h1v1h-1zM38 7h1v1h-1zM40 7h1v1h-1zM41 7h1v1h-1zM42 7h1v1h-1zM44 7h1v1h-1zM4 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM13 8h1v1h-1zM15 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM25 8h1v1h-1zM29 8h1v1h-1zM30 8h1v1h-1zM32 8h1v1h-1zM34 8h1v1h-1zM36 8h1v1h-1zM38 8h1v1h-1zM40 8h1v1h-1zM41 8h1v1h-1zM42 8h1v1h-1zM44 8h1v1h-1zM4 9h1v1h-1zM10 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM17 9h1v1h-1zM18 9h1v1h-1zM22 9h1v1h-1zM24 9h1v1h-1zM26 9h1v1h-1zM28 9h1v1h-1zM30 9h1v1h-1zM32 9h1v1h-1zM34 9h1v1h-1zM38 9h1v1h-1zM44 9h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM12 10h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM20 10h1v1h-1zM22 10h1v1h-1zM24 10h1v1h-1zM26 10h1v1h-1zM28 10h1v1h-1zM30 10h1v1h-1zM32 10h1v1h-1zM34 10h1v1h-1zM36 10h1v1h-1zM38 10h1v1h-1zM39 10h1v1h-1zM40 10h1v1h-1zM41 10h1v1h-1zM42 10h1v1h-1zM43 10h1v1h-1zM44 10h1v1h-1zM12 11h1v1h-1zM14 11h1v1h-1zM15 11h1v1h-1zM16 11h1v1h-1zM19 11h1v1h-1zM22 11h1v1h-1zM23 11h1v1h-1zM24 11h1v1h-1zM26 11h1v1h-1zM28 11h1v1h-1zM32 11h1v1h-1zM36 11h1v1h-1zM4 12h1v1h-1zM10 12h1v1h-1zM12 12h1v1h-1zM13 12h1v1h-1zM15 12h1v1h-1zM16 12h1v1h-1zM20 12h1v1h-1zM21 12h1v1h-1zM22 12h1v1h-1zM24 12h1v1h-1zM30 12h1v1h-1zM31 12h1v1h-1zM32 12h1v1h-1zM33 12h1v1h-1zM35 12h1v1h-1zM36 12h1v1h-1zM37 12h1v1h-1zM38 12h1v1h-1zM41 12h1v1h-1zM42 12h1v1h-1zM43 12h1v1h-1zM6 13h1v1h-1zM7 13h1v1h-1zM9 13h1v1h-1zM11 13h1v1h-1zM14 13h1v1h-1zM16 13h1v1h-1zM17 13h1v1h-1zM18 13h1v1h-1zM21 13h1v1h-1zM23 13h1v1h-1zM24 13h1v1h-1zM25 13h1v1h-1zM27 13h1v1h-1zM28 13h1v1h-1zM29 13h1v1h-1zM31 13h1v1h-1zM33 13h1v1h-1zM35 13h1v1h-1zM36 13h1v1h-1zM39 13h1v1h-1zM40 13h1v1h-1zM43 13h1v1h-1zM7 14h1v1h-1zM9 14h1v1h-1zM10 14h1v1h-1zM12 14h1v1h-1zM13 14h1v1h-1zM16 14h1v1h-1zM17 14h1v1h-1zM18 14h1v1h-1zM19 14h1v1h-1zM20 14h1v1h-1zM25 14h1v1h-1zM30 14h1v1h-1zM31 14h1v1h-1zM32 14h1v1h-1zM33 14h1v1h-1zM38 14h1v1h-1zM39 14h1v1h-1zM40 14h1v1h-1zM41 14h1v1h-1zM42 14h1v1h-1zM43 14h1v1h-1zM4 15h1v1h-1zM6 15h1v1h-1zM7 15h1v1h-1zM15 15h1v1h-1zM16 15h1v1h-1zM18 15h1v1h-1zM26 15h1v1h-1zM28 15h1v1h-1zM34 15h1v1h-1zM38 15h1v1h-1zM40 15h1v1h-1zM43 15h1v1h-1zM44 15h1v1h-1zM4 16h1v1h-1zM5 16h1v1h-1zM6 16h1v1h-1zM7 16h1v1h-1zM9 16h1v1h-1zM10 16h1v1h-1zM15 16h1v1h-1zM18 16h1v1h-1zM20 16h1v1h-1zM21 16h1v1h-1zM22 16h1v1h-1zM23 16h1v1h-1zM24 16h1v1h-1zM27 16h1v1h-1zM31 16h1v1h-1zM32 16h1v1h-1zM34 16h1v1h-1zM35 16h1v1h-1zM36 16h1v1h-1zM38 16h1v1h-1zM43 16h1v1h-1zM44 16h1v1h-1zM5 17h1v1h-1zM6 17h1v1h-1zM7 17h1v1h-1zM8 17h1v1h-1zM9 17h1v1h-1zM11 17h1v1h-1zM12 17h1v1h-1zM13 17h1v1h-1zM15 17h1v1h-1zM17 17h1v1h-1zM20 17h1v1h-1zM21 17h1v1h-1zM22 17h1v1h-1zM24 17h1v1h-1zM25 17h1v1h-1zM28 17h1v1h-1zM32 17h1v1h-1zM35 17h1v1h-1zM36 17h1v1h-1zM38 17h1v1h-1zM40 17h1v1h-1zM41 17h1v1h-1zM44 17h1v1h-1zM8 18h1v1h-1zM10 18h1v1h-1zM12 18h1v1h-1zM13 18h1v1h-1zM16 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM19 18h1v1h-1zM20 18h1v1h-1zM22 18h1v1h-1zM23 18h1v1h-1zM25 18h1v1h-1zM26 18h1v1h-1zM33 18h1v1h-1zM34 18h1v1h-1zM36 18h1v1h-1zM38 18h1v1h-1zM40 18h1v1h-1zM42 18h1v1h-1zM4 19h1v1h-1zM5 19h1v1h-1zM6 19h1v1h-1zM11 19h1v1h-1zM12 19h1v1h-1zM14 19h1v1h-1zM18 19h1v1h-1zM19 19h1v1h-1zM20 19h1v1h-1zM22 19h1v1h-1zM23 19h1v1h-1zM26 19h1v1h-1zM28 19h1v1h-1zM30 19h1v1h-1zM31 19h1v1h-1zM34 19h1v1h-1zM36 19h1v1h-1zM38 19h1v1h-1zM40 19h1v1h-1zM42 19h1v1h-1zM43 19h1v1h-1zM44 19h1v1h-1zM4 20h1v1h-1zM9 20h1v1h-1zM10 20h1v1h-1zM12 20h1v1h-1zM16 20h1v1h-1zM17 20h1v1h-1zM21 20h1v1h-1zM22 20h1v1h-1zM23 20h1v1h-1zM24 20h1v1h-1zM25 20h1v1h-1zM26 20h1v1h-1zM29 20h1v1h-1zM32 20h1v1h-1zM35 20h1v1h-1zM36 20h1v1h-1zM39 20h1v1h-1zM41 20h1v1h-1zM42 20h1v1h-1zM4 21h1v1h-1zM5 21h1v1h-1zM6 21h1v1h-1zM7 21h1v1h-1zM9 21h1v1h-1zM11 21h1v1h-1zM12 21h1v1h-1zM13 21h1v1h-1zM15 21h1v1h-1zM16 21h1v1h-1zM19 21h1v1h-1zM20 21h1v1h-1zM21 21h1v1h-1zM23 21h1v1h-1zM26 21h1v1h-1zM27 21h1v1h-1zM28 21h1v1h-1zM29 21h1v1h-1zM30 21h1v1h-1zM31 21h1v1h-1zM35 21h1v1h-1zM37 21h1v1h-1zM39 21h1v1h-1zM40 21h1v1h-1zM41 21h1v1h-1zM42 21h1v1h-1zM43 21h1v1h-1zM44 21h1v1h-1zM4 22h1v1h-1zM5 22h1v1h-1zM6 22h1v1h-1zM7 22h1v1h-1zM10 22h1v1h-1zM11 22h1v1h-1zM12 22h1v1h-1zM16 22h1v1h-1zM17 22h1v1h-1zM23 22h1v1h-1zM24 22h1v1h-1zM25 22h1v1h-1zM26 22h1v1h-1zM27 22h1v1h-1zM28 22h1v1h-1zM31 22h1v1h-1zM33 22h1v1h-1zM34 22h1v1h-1zM35 22h1v1h-1zM37 22h1v1h-1zM38 22h1v1h-1zM39 22h1v1h-1zM43 22h1v1h-1zM44 22h1v1h-1zM8 23h1v1h-1zM12 23h1v1h-1zM13 23h1v1h-1zM15 23h1v1h-1zM17 23h1v1h-1zM21 23h1v1h-1zM22 23h1v1h-1zM23 23h1v1h-1zM26 23h1v1h-1zM28 23h1v1h-1zM29 23h1v1h-1zM37 23h1v1h-1zM40 23h1v1h-1zM41 23h1v1h-1zM6 24h1v1h-1zM8 24h1v1h-1zM10 24h1v1h-1zM11 24h1v1h-1zM12 24h1v1h-1zM13 24h1v1h-1zM16 24h1v1h-1zM18 24h1v1h-1zM19 24h1v1h-1zM20 24h1v1h-1zM23 24h1v1h-1zM25 24h1v1h-1zM28 24h1v1h-1zM30 24h1v1h-1zM31 24h1v1h-1zM34 24h1v1h-1zM35 24h1v1h-1zM36 24h1v1h-1zM37 24h1v1h-1zM42 24h1v1h-1zM43 24h1v1h-1zM4 25h1v1h-1zM7 25h1v1h-1zM14 25h1v1h-1zM16 25h1v1h-1zM22 25h1v1h-1zM24 25h1v1h-1zM27 25h1v1h-1zM28 25h1v1h-1zM30 25h1v1h-1zM31 25h1v1h-1zM33 25h1v1h-1zM34 25h1v1h-1zM35 25h1v1h-1zM37 25h1v1h-1zM39 25h1v1h-1zM40 25h1v1h-1zM44 25h1v1h-1zM6 26h1v1h-1zM8 26h1v1h-1zM9 26h1v1h-1zM10 26h1v1h-1zM11 26h1v1h-1zM12 26h1v1h-1zM13 26h1v1h-1zM15 26h1v1h-1zM16 26h1v1h-1zM19 26h1v1h-1zM20 26h1v1h-1zM22 26h1v1h-1zM23 26h1v1h-1zM25 26h1v1h-1zM29 26h1v1h-1zM31 26h1v1h-1zM32 26h1v1h-1zM36 26h1v1h-1zM39 26h1v1h-1zM42 26h1v1h-1zM4 27h1v1h-1zM5 27h1v1h-1zM6 27h1v1h-1zM7 27h1v1h-1zM8 27h1v1h-1zM9 27h1v1h-1zM11 27h1v1h-1zM13 27h1v1h-1zM15 27h1v1h-1zM17 27h1v1h-1zM18 27h1v1h-1zM22 27h1v1h-1zM24 27h1v1h-1zM27 27h1v1h-1zM32 27h1v1h-1zM34 27h1v1h-1zM35 27h1v1h-1zM39 27h1v1h-1zM41 27h1v1h-1zM44 27h1v1h-1zM4 28h1v1h-1zM5 28h1v1h-1zM7 28h1v1h-1zM10 28h1v1h-1zM11 28h1v1h-1zM12 28h1v1h-1zM14 28h1v1h-1zM15 28h1v1h-1zM16 28h1v1h-1zM17 28h1v1h-1zM19 28h1v1h-1zM20 28h1v1h-1zM22 28h1v1h-1zM23 28h1v1h-1zM26 28h1v1h-1zM30 28h1v1h-1zM33 28h1v1h-1zM35 28h1v1h-1zM38 28h1v1h-1zM39 28h1v1h-1zM41 28h1v1h-1zM42 28h1v1h-1zM43 28h1v1h-1zM4 29h1v1h-1zM5 29h1v1h-1zM8 29h1v1h-1zM11 29h1v1h-1zM12 29h1v1h-1zM13 29h1v1h-1zM16 29h1v1h-1zM20 29h1v1h-1zM21 29h1v1h-1zM23 29h1v1h-1zM25 29h1v1h-1zM26 29h1v1h-1zM27 29h1v1h-1zM28 29h1v1h-1zM29 29h1v1h-1zM30 29h1v1h-1zM31 29h1v1h-1zM33 29h1v1h-1zM34 29h1v1h-1zM35 29h1v1h-1zM37 29h1v1h-1zM38 29h1v1h-1zM39 29h1v1h-1zM40 29h1v1h-1zM42 29h1v1h-1zM43 29h1v1h-1zM4 30h1v1h-1zM5 30h1v1h-1zM8 30h1v1h-1zM10 30h1v1h-1zM11 30h1v1h-1zM16 30h1v1h-1zM17 30h1v1h-1zM18 30h1v1h-1zM21 30h1v1h-1zM22 30h1v1h-1zM25 30h1v1h-1zM26 30h1v1h-1zM29 30h1v1h-1zM31 30h1v1h-1zM33 30h1v1h-1zM34 30h1v1h-1zM37 30h1v1h-1zM42 30h1v1h-1zM6 31h1v1h-1zM7 31h1v1h-1zM11 31h1v1h-1zM12 31h1v1h-1zM13 31h1v1h-1zM14 31h1v1h-1zM17 31h1v1h-1zM18 31h1v1h-1zM19 31h1v1h-1zM22 31h1v1h-1zM24 31h1v1h-1zM26 31h1v1h-1zM28 31h1v1h-1zM30 31h1v1h-1zM31 31h1v1h-1zM32 31h1v1h-1zM33 31h1v1h-1zM34 31h1v1h-1zM35 31h1v1h-1zM36 31h1v1h-1zM37 31h1v1h-1zM38 31h1v1h-1zM40 31h1v1h-1zM41 31h1v1h-1zM42 31h1v1h-1zM44 31h1v1h-1zM7 32h1v1h-1zM8 32h1v1h-1zM10 32h1v1h-1zM12 32h1v1h-1zM14 32h1v1h-1zM16 32h1v1h-1zM17 32h1v1h-1zM18 32h1v1h-1zM19 32h1v1h-1zM24 32h1v1h-1zM26 32h1v1h-1zM28 32h1v1h-1zM29 32h1v1h-1zM30 32h1v1h-1zM32 32h1v1h-1zM35 32h1v1h-1zM39 32h1v1h-1zM41 32h1v1h-1zM44 32h1v1h-1zM4 33h1v1h-1zM6 33h1v1h-1zM8 33h1v1h-1zM14 33h1v1h-1zM15 33h1v1h-1zM17 33h1v1h-1zM20 33h1v1h-1zM21 33h1v1h-1zM22 33h1v1h-1zM34 33h1v1h-1zM35 33h1v1h-1zM36 33h1v1h-1zM38 33h1v1h-1zM40 33h1v1h-1zM42 33h1v1h-1zM44 33h1v1h-1zM4 34h1v1h-1zM5 34h1v1h-1zM7 34h1v1h-1zM10 34h1v1h-1zM13 34h1v1h-1zM14 34h1v1h-1zM15 34h1v1h-1zM19 34h1v1h-1zM20 34h1v1h-1zM21 34h1v1h-1zM22 34h1v1h-1zM23 34h1v1h-1zM26 34h1v1h-1zM28 34h1v1h-1zM29 34h1v1h-1zM30 34h1v1h-1zM31 34h1v1h-1zM34 34h1v1h-1zM35 34h1v1h-1zM38 34h1v1h-1zM40 34h1v1h-1zM41 34h1v1h-1zM42 34h1v1h-1zM44 34h1v1h-1zM4 35h1v1h-1zM7 35h1v1h-1zM9 35h1v1h-1zM12 35h1v1h-1zM16 35h1v1h-1zM18 35h1v1h-1zM19 35h1v1h-1zM20 35h1v1h-1zM26 35h1v1h-1zM27 35h1v1h-1zM35 35h1v1h-1zM38 35h1v1h-1zM40 35h1v1h-1zM44 35h1v1h-1zM4 36h1v1h-1zM7 36h1v1h-1zM8 36h1v1h-1zM10 36h1v1h-1zM11 36h1v1h-1zM15 36h1v1h-1zM18 36h1v1h-1zM21 36h1v1h-1zM24 36h1v1h-1zM25 36h1v1h-1zM26 36h1v1h-1zM27 36h1v1h-1zM29 36h1v1h-1zM31 36h1v1h-1zM32 36h1v1h-1zM36 36h1v1h-1zM37 36h1v1h-1zM38 36h1v1h-1zM39 36h1v1h-1zM40 36h1v1h-1zM41 36h1v1h-1zM42 36h1v1h-1zM43 36h1v1h-1zM12 37h1v1h-1zM16 37h1v1h-1zM17 37h1v1h-1zM18 37h1v1h-1zM19 37h1v1h-1zM23 37h1v1h-1zM24 37h1v1h-1zM25 37h1v1h-1zM26 37h1v1h-1zM27 37h1v1h-1zM28 37h1v1h-1zM30 37h1v1h-1zM31 37h1v1h-1zM32 37h1v1h-1zM33 37h1v1h-1zM34 37h1v1h-1zM36 37h1v1h-1zM40 37h1v1h-1zM41 37h1v1h-1zM42 37h1v1h-1zM43 37h1v1h-1zM4 38h1v1h-1zM5 38h1v1h-1zM6 38h1v1h-1zM7 38h1v1h-1zM8 38h1v1h-1zM9 38h1v1h-1zM10 38h1v1h-1zM14 38h1v1h-1zM22 38h1v1h-1zM26 38h1v1h-1zM28 38h1v1h-1zM31 38h1v1h-1zM33 38h1v1h-1zM36 38h1v1h-1zM38 38h1v1h-1zM40 38h1v1h-1zM41 38h1v1h-1zM42 38h1v1h-1zM43 38h1v1h-1zM4 39h1v1h-1zM10 39h1v1h-1zM13 39h1v1h-1zM15 39h1v1h-1zM18 39h1v1h-1zM20 39h1v1h-1zM23 39h1v1h-1zM24 39h1v1h-1zM25 39h1v1h-1zM30 39h1v1h-1zM32 39h1v1h-1zM33 39h1v1h-1zM34 39h1v1h-1zM35 39h1v1h-1zM36 39h1v1h-1zM40 39h1v1h-1zM41 39h1v1h-1zM4 40h1v1h-1zM6 40h1v1h-1zM7 40h1v1h-1zM8 40h1v1h-1zM10 40h1v1h-1zM13 40h1v1h-1zM15 40h1v1h-1zM17 40h1v1h-1zM21 40h1v1h-1zM22 40h1v1h-1zM23 40h1v1h-1zM24 40h1v1h-1zM25 40h1v1h-1zM28 40h1v1h-1zM29 40h1v1h-1zM30 40h1v1h-1zM31 40h1v1h-1zM33 40h1v1h-1zM35 40h1v1h-1zM36 40h1v1h-1zM37 40h1v1h-1zM38 40h1v1h-1zM39 40h1v1h-1zM40 40h1v1h-1zM43 40h1v1h-1zM44 40h1v1h-1zM4 41h1v1h-1zM6 41h1v1h-1zM7 41h1v1h-1zM8 41h1v1h-1zM10 41h1v1h-1zM14 41h1v1h-1zM16 41h1v1h-1zM20 41h1v1h-1zM21 41h1v1h-1zM24 41h1v1h-1zM27 41h1v1h-1zM29 41h1v1h-1zM30 41h1v1h-1zM31 41h1v1h-1zM34 41h1v1h-1zM39 41h1v1h-1zM40 41h1v1h-1zM41 41h1v1h-1zM43 41h1v1h-1zM4 42h1v1h-1zM6 42h1v1h-1zM7 42h1v1h-1zM8 42h1v1h-1zM10 42h1v1h-1zM13 42h1v1h-1zM14 42h1v1h-1zM15 42h1v1h-1zM16 42h1v1h-1zM17 42h1v1h-1zM18 42h1v1h-1zM19 42h1v1h-1zM22 42h1v1h-1zM23 42h1v1h-1zM24 42h1v1h-1zM25 42h1v1h-1zM29 42h1v1h-1zM32 42h1v1h-1zM33 42h1v1h-1zM34 42h1v1h-1zM35 42h1v1h-1zM36 42h1v1h-1zM38 42h1v1h-1zM39 42h1v1h-1zM40 42h1v1h-1zM4 43h1v1h-1zM10 43h1v1h-1zM14 43h1v1h-1zM15 43h1v1h-1zM17 43h1v1h-1zM18 43h1v1h-1zM20 43h1v1h-1zM21 43h1v1h-1zM22 43h1v1h-1zM24 43h1v1h-1zM26 43h1v1h-1zM27 43h1v1h-1zM28 43h1v1h-1zM30 43h1v1h-1zM35 43h1v1h-1zM37 43h1v1h-1zM38 43h1v1h-1zM40 43h1v1h-1zM41 43h1v1h-1zM42 43h1v1h-1zM44 43h1v1h-1zM4 44h1v1h-1zM5 44h1v1h-1zM6 44h1v1h-1zM7 44h1v1h-1zM8 44h1v1h-1zM9 44h1v1h-1zM10 44h1v1h-1zM12 44h1v1h-1zM14 44h1v1h-1zM17 44h1v1h-1zM20 44h1v1h-1zM23 44h1v1h-1zM24 44h1v1h-1zM27 44h1v1h-1zM29 44h1v1h-1zM31 44h1v1h-1zM32 44h1v1h-1zM33 44h1v1h-1zM34 44h1v1h-1zM37 44h1v1h-1zM40 44h1v1h-1zM42 44h1v1h-1z"/></svg></div></div><p class="small muted">Izaberi iznos, pa u mobilnoj banci odaberi „IPS skeniraj“ i skeniraj QR kod</p><p>Hvala!</p></div></div>
+<script>(function(){var o=document.getElementById('coffeeOv');function c(){o.classList.remove('open')}window.coffeeOpen=function(){o.classList.add('open')};document.getElementById('coffeeX').onclick=c;o.addEventListener('click',function(e){if(e.target===o)c()});document.addEventListener('keydown',function(e){if(e.key==='Escape')c()});Array.prototype.forEach.call(document.querySelectorAll('.coffee-amts button'),function(b){b.onclick=function(){var a=b.getAttribute('data-a');Array.prototype.forEach.call(document.querySelectorAll('.coffee-amts button'),function(x){x.classList.toggle('on',x===b)});Array.prototype.forEach.call(document.querySelectorAll('.coffee-qrv'),function(v){v.hidden=v.getAttribute('data-a')!==a})}});document.getElementById('coffeeCopy').onclick=function(){var t='115000000006810143',x=this;function ok(){x.textContent='Kopirano \u2713';setTimeout(function(){x.textContent='Kopiraj broj računa'},1800)}try{navigator.clipboard.writeText(t).then(ok,function(){})}catch(e){}}})();</script>
 </body>
 </html>
