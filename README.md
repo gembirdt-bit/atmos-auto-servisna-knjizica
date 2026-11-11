@@ -96,6 +96,14 @@ Atmos Auto Servisna Knjižica funkcioniše i bez internet konekcije zahvaljujuć
 3. Izabrati Add to Home Screen.
 
 ---
+Autor
+Gemb-Bit Željko Ilić
+
+
+GitHub:** [gembirdt-bit](https://github.com/gembirdt-bit)
+Repozitorijum:** [atmos-auto-servisna-knjizica](https://github.com/gembirdt-bit/atmos-auto-servisna-knjizica)
+Live Demo:** [Pogledaj aplikaciju uživo](https://gembirdt-bit.github.io/atmos-auto-servisna-knjizica)
+
 
 ## Struktura projekta
 
@@ -107,9 +115,3 @@ Atmos Auto Servisna Knjižica funkcioniše i bez internet konekcije zahvaljujuć
 ├── icon.png
 └── README.md
 
-Autor
-Gemb-Bit Željko Ilić
-
-GitHub: https://github.com/gembirdt-bit
-Repozitorijum: https://github.com/gembirdt-bit/atmos-auto-servisna-knjizica
-Live Demo: [https://gembirdt-bit.github.io/atmos-auto-servisna-knjizica](https://gembirdt-bit.github.io/atmos-auto-servisna-knjizica/)
