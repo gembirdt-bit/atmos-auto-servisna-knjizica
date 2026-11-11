@@ -108,6 +108,10 @@ Live Demo:** [Pogledaj aplikaciju uživo](https://gembirdt-bit.github.io/atmos-a
 
 Aplikaciju moižete slobodno koristiti uz uslov da ostavite credits link ka autoru - ako radite clone.
 
+Ako Vam se dopadaju moje aplikacije i želite da uplatite neki simboličan iznos za kafu ili ručak :D 
+Možete donirati na račun: 115000000006810143 Željko Ilić, Beograd. 
+Hvala!
+
 ## Struktura projekta
 
 ```text
