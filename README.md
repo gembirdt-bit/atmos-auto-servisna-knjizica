@@ -112,4 +112,4 @@ Gemb-Bit Željko Ilić
 
 GitHub: https://github.com/gembirdt-bit
 Repozitorijum: https://github.com/gembirdt-bit/atmos-auto-servisna-knjizica
-Live Demo: https://gembirdt-bit.github.io/atmos-auto-servisna-knjizica
+Live Demo: [https://gembirdt-bit.github.io/atmos-auto-servisna-knjizica](https://gembirdt-bit.github.io/atmos-auto-servisna-knjizica/)
