@@ -104,6 +104,9 @@ GitHub:** [gembirdt-bit](https://github.com/gembirdt-bit)
 Repozitorijum:** [atmos-auto-servisna-knjizica](https://github.com/gembirdt-bit/atmos-auto-servisna-knjizica)
 Live Demo:** [Pogledaj aplikaciju uživo](https://gembirdt-bit.github.io/atmos-auto-servisna-knjizica)
 
+## Licenca
+
+Aplikaciju moižete slobodno koristiti uz uslov da ostavite credits link ka autoru - ako radite clone.
 
 ## Struktura projekta
 
