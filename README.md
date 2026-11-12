@@ -66,6 +66,14 @@ Moguće je brzo pronaći podatke prema:
 
 ---
 
+### Google Drive sinhronizacija
+Podaci se po želji čuvaju na **tvom Google Drive-u** (fajl „Atmos servisna knjižica — podaci.json“), pa svi tvoji uređaji sa istim Google nalogom dele ista vozila, servise, gorivo, troškove i podsetnike. Aplikacija traži samo dozvolu za fajlove koje sama napravi (`drive.file`) i ne vidi ostale fajlove na Drive-u. Uključuje se u Podešavanja → Google Drive.
+
+### Rezervna kopija
+Dugmad **Napravi rezervnu kopiju** i **Vrati rezervnu kopiju** (iz fajla ili iz automatskih dnevnih kopija na uređaju). CSV za Excel, štampa i automatsko čuvanje u fajl (računar) su pod „Napredno“.
+
+[Politika privatnosti](https://gembirdt-bit.github.io/privatnost.html) · [Uslovi korišćenja](https://gembirdt-bit.github.io/uslovi.html)
+
 ## Offline rad
 
 Atmos Auto Servisna Knjižica funkcioniše i bez internet konekcije zahvaljujući PWA tehnologiji.
