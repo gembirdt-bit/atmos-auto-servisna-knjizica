@@ -6,6 +6,8 @@ Podaci se čuvaju na tvom uređaju, a po želji i na **tvom Google Drive-u**, pa
 
 **Otvori aplikaciju:** https://gembirdt-bit.github.io/atmos-auto-servisna-knjizica/
 
+> ☁️ **Novo u verziji 3.1: aplikacija se sada povezuje sa Google Drive-om!** Uključi u **Podešavanja → Google Drive → Poveži Google Drive** i tvoji podaci se čuvaju na tvom Google Drive-u i dele između svih tvojih uređaja (telefon, tablet, računar). Uputstvo je [ispod](#google-drive-sinhronizacija).
+
 ## Mogućnosti
 
 - **Više vozila** — naziv, tablica, godište, VIN, gorivo; brz izbor vozila na vrhu ekrana
