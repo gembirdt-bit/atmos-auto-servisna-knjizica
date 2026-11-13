@@ -230,7 +230,7 @@ function restoreSnap(i){
   save();go('pregled');toast('Podaci vraćeni ✔');
 }
 /* ---------- AŽURIRANJE APLIKACIJE ---------- */
-const APP_VERSION='3.1';
+const APP_VERSION='3.2';
 const PRE='atmosAuto2_preupdate';
 const countAll=d=>d.vehicles.reduce((s,v)=>s+v.records.length+v.fuels.length+v.trips.length+(v.reminders||[]).length,0)+d.vehicles.length;
 async function fetchRemoteVersion(){
@@ -679,6 +679,10 @@ function pgPodesavanja(){
   <div class="card"><h3>☕ Podrži autora</h3>
     <div class="small muted" style="margin-bottom:10px">Ako ti se aplikacija sviđa, možeš da častiš autora kafom.</div>
     <button class="btn-p" style="width:100%" onclick="coffeeOpen()" type="button">☕ Plati mi kafu</button>
+  </div>
+  <div class="card"><h3>📱 Još Atmos aplikacija</h3>
+    <div class="small muted" style="margin-bottom:10px">Atmos Dom (troškovi domaćinstva), Atmos Ishrana (kalorije i ishrana), Atmos Dashboard i ostale besplatne aplikacije.</div>
+    <button class="btn-p" style="width:100%" onclick="window.open('https://gembirdt-bit.github.io/atmosaplikacije/','_blank','noopener')" type="button">🌐 Otvori Atmos aplikacije</button>
   </div>`;
 }
 
