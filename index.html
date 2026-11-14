@@ -71,7 +71,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 .sw{display:flex;gap:8px;flex-wrap:wrap}.sw button{width:36px;height:36px;border-radius:50%;padding:0;border:3px solid transparent}.sw button.on{border-color:var(--txt)}
 .seg{display:flex;background:var(--card2);border-radius:12px;padding:3px;gap:3px}.seg button{flex:1;border:0;background:none;padding:8px;border-radius:9px}.seg button.on{background:var(--acc);color:#fff;font-weight:600}
 .more{display:grid;gap:10px}.more button{display:flex;align-items:center;gap:12px;padding:16px;text-align:left;font-size:1rem}
-footer{text-align:center;color:var(--muted);font-size:.75rem;padding:16px}
+footer{text-align:center;color:var(--muted);font-size:.75rem;padding:16px 16px 76px}
 @media(max-width:560px){.g4{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr}.logo small{display:none}}
 @media(min-width:900px){
  body{padding-bottom:30px;padding-left:200px}
@@ -108,7 +108,7 @@ footer{text-align:center;color:var(--muted);font-size:.75rem;padding:16px}
 </div></div>
 
 <main class="shell" id="view"></main>
-<footer>zeljkoracunariborca<br><button class="coffee-mini" onclick="coffeeOpen()" type="button">☕ Doniraj autoru</button></footer>
+<footer>zeljkoracunariborca<br><button class="coffee-mini" onclick="coffeeOpen()" type="button">☕ Doniraj autoru</button> <a class="coffee-mini" style="text-decoration:none" href="https://gembirdt-bit.github.io/atmosdom/" target="_blank" rel="noopener">🏠 Atmos Dom</a></footer>
 
 <button class="fab" id="fab" aria-label="Dodaj">+</button>
 
@@ -230,7 +230,7 @@ function restoreSnap(i){
   save();go('pregled');toast('Podaci vraćeni ✔');
 }
 /* ---------- AŽURIRANJE APLIKACIJE ---------- */
-const APP_VERSION='3.2';
+const APP_VERSION='3.3';
 const PRE='atmosAuto2_preupdate';
 const countAll=d=>d.vehicles.reduce((s,v)=>s+v.records.length+v.fuels.length+v.trips.length+(v.reminders||[]).length,0)+d.vehicles.length;
 async function fetchRemoteVersion(){

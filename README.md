@@ -56,6 +56,9 @@ U **Podešavanja → Rezervna kopija**:
 
 ## Verzije
 
+### 3.3
+- U dnu aplikacije taster za Atmos Dom
+
 ### 3.1
 - **Google Drive sinhronizacija** između uređaja
 - Jednostavnija rezervna kopija: **Napravi** i **Vrati**; CSV, štampa i čuvanje u fajl su pod „Napredno“
