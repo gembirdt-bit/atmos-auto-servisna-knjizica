@@ -1,4 +1,4 @@
-const CACHE='atmos-auto-v12';
+const CACHE='atmos-auto-v13';
 const SHELL=['./','index.html','manifest.json','icon.png'];
 
 self.addEventListener('install',e=>{
@@ -9,16 +9,21 @@ self.addEventListener('activate',e=>{
   e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
 });
 
-// Mreža prvo (da uvek dobiješ najnoviju verziju), keš kao rezerva kad nema interneta
+// Mreža prvo (da uvek dobiješ najnoviju verziju), ali se na server čeka najviše 3 s ako postoji sačuvana kopija:
+// na slabom internetu otvara se sačuvana, a nova se preuzme u pozadini. Bez interneta: sačuvana kopija.
 self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET')return;
-  e.respondWith(
-    fetch(e.request).then(res=>{
-      const copy=res.clone();
-      caches.open(CACHE).then(c=>c.put(e.request,copy)).catch(()=>{});
+  const req=e.request;
+  if(req.method!=='GET')return;
+  e.respondWith((async()=>{
+    const net=fetch(req).then(res=>{
+      if(res&&(res.ok||res.type==='opaque')){const copy=res.clone();caches.open(CACHE).then(c=>c.put(req,copy)).catch(()=>{})}
       return res;
-    }).catch(()=>caches.match(e.request).then(r=>r||caches.match('index.html')))
-  );
+    });
+    const saved=(await caches.match(req))||(req.mode==='navigate'?await caches.match('index.html'):undefined);
+    if(!saved)return net.catch(()=>caches.match('index.html'));
+    e.waitUntil(net.catch(()=>{}));
+    return Promise.race([net.then(r=>(r&&r.ok?r:saved),()=>saved),new Promise(r=>setTimeout(()=>r(saved),3000))]);
+  })());
 });
 
 /* ---- Provera rokova u pozadini (Periodic Background Sync, gde je podržano) ---- */

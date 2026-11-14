@@ -56,6 +56,10 @@ U **Podešavanja → Rezervna kopija**:
 
 ## Verzije
 
+### 3.4
+- Nova verzija se proverava pri svakom otvaranju i kad se aplikacija vrati iz pozadine; na slabom internetu otvaranje čeka najviše 3 s
+- Uklonjen taster „Proveri ažuriranje“ — provera ide sama
+
 ### 3.3
 - U dnu aplikacije taster za Atmos Dom
 
