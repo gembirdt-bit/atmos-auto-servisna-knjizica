@@ -230,7 +230,7 @@ function restoreSnap(i){
   save();go('pregled');toast('Podaci vraćeni ✔');
 }
 /* ---------- AŽURIRANJE APLIKACIJE ---------- */
-const APP_VERSION='3.3';
+const APP_VERSION='3.4';
 const PRE='atmosAuto2_preupdate';
 const countAll=d=>d.vehicles.reduce((s,v)=>s+v.records.length+v.fuels.length+v.trips.length+(v.reminders||[]).length,0)+d.vehicles.length;
 async function fetchRemoteVersion(){
@@ -663,8 +663,8 @@ function pgPodesavanja(){
     <div class="small muted" style="margin-top:8px">Obaveštenje stiže pri otvaranju aplikacije. Ako je instaliraš na početni ekran (Chrome/Edge, Android ili računar), pokušaće da proverava rokove i u pozadini jednom dnevno, što pregledač ne garantuje. Na ikonici se prikazuje i broj stavki koje zahtevaju pažnju, gde je to podržano.</div>
   </div>
   <div class="card"><h3>🔄 Ažuriranje aplikacije</h3>
-    <div class="small muted" style="margin-bottom:10px">Instalirana verzija: <b>${APP_VERSION}</b>${ui.upd?` · dostupna: <b>${esc(ui.upd)}</b>`:''}. Pri ažuriranju se prvo čuva interna kopija i preuzima izvoz, zatim se učitava nova verzija, a podaci se proveravaju i po potrebi automatski vraćaju.</div>
-    <div class="row"><button class="grow" data-act="checkupd">🔍 Proveri ažuriranje</button>${ui.upd?`<button class="btn-p grow" data-act="doupd">⬆ Ažuriraj na ${esc(ui.upd)}</button>`:''}</div>
+    <div class="small muted" style="margin-bottom:10px">Instalirana verzija: <b>${APP_VERSION}</b>${ui.upd?` · dostupna: <b>${esc(ui.upd)}</b>`:''}. Aplikacija sama proverava novu verziju pri svakom otvaranju i kad se vrati iz pozadine. Pri ažuriranju se prvo čuva interna kopija i preuzima izvoz, a podaci se posle proveravaju i po potrebi automatski vraćaju.</div>
+    ${ui.upd?`<button class="btn-p" style="width:100%" data-act="doupd">⬆ Ažuriraj na ${esc(ui.upd)}</button>`:''}
   </div>
   ${gdCard()}
   <div class="card"><h3>🛡️ Rezervna kopija</h3>
@@ -1067,7 +1067,11 @@ addEventListener('resize',()=>{const w=innerWidth>=900;if(w!==wasWide){wasWide=w
 verifyAfterUpdate();
 takeSnap('automatski');
 render();
-if(navigator.onLine&&S().lastUpdCheck!==todayStr())setTimeout(()=>checkUpdate(true),2500);
+if(navigator.onLine)setTimeout(()=>checkUpdate(true),2500);
+/* telefon često samo vrati aplikaciju iz pozadine (bez ponovnog pokretanja) — tada se nova verzija proverava ponovo, najviše na 30 min */
+let updChkAt=Date.now();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine&&Date.now()-updChkAt>30*60e3){updChkAt=Date.now();checkUpdate(true)}});
+addEventListener('online',()=>{if(Date.now()-updChkAt>5*60e3){updChkAt=Date.now();checkUpdate(true)}});
 fileInit().then(()=>{if(ui.tab==='podesavanja')render()});
 setTimeout(()=>checkNotif(),1200);
 syncAlertData();
