@@ -1,4 +1,4 @@
-const CACHE='atmos-auto-v13';
+const CACHE='atmos-auto-v14';
 const SHELL=['./','index.html','manifest.json','icon.png'];
 
 self.addEventListener('install',e=>{
@@ -14,6 +14,7 @@ self.addEventListener('activate',e=>{
 self.addEventListener('fetch',e=>{
   const req=e.request;
   if(req.method!=='GET')return;
+  if(/goatcounter\.com|gc\.zgo\.at/.test(req.url))return; // brojač poseta ide direktno na mrežu
   e.respondWith((async()=>{
     const net=fetch(req).then(res=>{
       if(res&&(res.ok||res.type==='opaque')){const copy=res.clone();caches.open(CACHE).then(c=>c.put(req,copy)).catch(()=>{})}
