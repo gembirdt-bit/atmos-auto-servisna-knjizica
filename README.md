@@ -56,6 +56,10 @@ U **Podešavanja → Rezervna kopija**:
 
 ## Verzije
 
+### 3.5
+- Automatska sinhronizacija sa Google Drive-om po paljenju aplikacije: odmah ako je Google dozvola još važeća, a ako je istekla — na prvi dodir ekrana, bez traženja tastera „Sinhronizuj“
+- Sinhronizacija i kad se aplikacija vrati iz pozadine
+
 ### 3.4
 - Nova verzija se proverava pri svakom otvaranju i kad se aplikacija vrati iz pozadine; na slabom internetu otvaranje čeka najviše 3 s
 - Uklonjen taster „Proveri ažuriranje“ — provera ide sama

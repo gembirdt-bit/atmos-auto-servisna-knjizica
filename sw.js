@@ -1,4 +1,4 @@
-const CACHE='atmos-auto-v14';
+const CACHE='atmos-auto-v15';
 const SHELL=['./','index.html','manifest.json','icon.png'];
 
 self.addEventListener('install',e=>{
